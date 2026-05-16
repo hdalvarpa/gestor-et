@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-header bg-primary text-white">
+        <h4 class="mb-0">Generar Formato de Constatación</h4>
+    </div>
+    <div class="card-body">
+        <form action="#" method="POST" onkeydown="return event.key != 'Enter';">
+            <h5 class="mb-3 border-bottom pb-2 text-primary">Información del Formato</h5>
+            
+            <p>Aquí puede agregar los campos específicos para el Formato de Constatación.</p>
+
+            <div class="row">
+                <div class="col-md-12 mb-3">
+                    <label class="form-label fw-bold">Campo de Ejemplo</label>
+                    <input type="text" class="form-control" name="ejemplo">
+                </div>
+            </div>
+
+            <div class="mt-4 text-end">
+                <button type="submit" class="btn btn-lg btn-success">
+                    Generar Documento
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
