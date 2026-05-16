@@ -109,8 +109,8 @@ def constatacion():
                         grupo_familiar=fila.get('GRUPO FAMILIAR', ''),
                         direccion_predio=fila.get('DIRECCION PREDIO', ''),
                         partida=fila.get('PARTIDA', ''),
-                        sin_agua=fila.get('SIN AGUA', ''),
-                        sin_saneamiento=fila.get('SIN SANEAMIENTO', ''),
+                        sin_agua=fila.get('SIN \nAGUA', ''),
+                        sin_saneamiento=fila.get('SIN \nSANEAMIENTO', ''),
                         distrito=fila.get('DISTRITO', ''),
                         provincia=fila.get('PROVINCIA', '')
                     )
@@ -157,6 +157,7 @@ def constatacion():
                         'SISANEAMIENTO': si_saneamiento,
                         'NOSANEAMIENTO': no_saneamiento,
                         'NOMBREING': mi_empresa.nombre_ing,
+                        'DNIING': mi_empresa.dni_ing,
                         'FECHA': datetime.now().strftime("%d/%m/%Y")
                     }
                     
