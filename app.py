@@ -163,26 +163,45 @@ def constatacion():
                                 'NOSANEAMIENTO': no_saneamiento,
                                 'NOMBREING': mi_empresa.nombre_ing,
                                 'DNIING': mi_empresa.dni_ing,
+                                'CIP': mi_empresa.cip,
+                                'DISTRITOBENE': b.distrito,
                                 'FECHA': datetime.now().strftime("%d/%m/%Y")
                             }
                             
-                            # Cargar la plantilla para este beneficiario
-                            doc = DocxTemplate("FORMATO DE CONSTATACIÓN.docx")
-                            
-                            # Reemplazamos los datos
-                            doc.render(contexto)
-                            
-                            # Guardamos este documento en memoria
-                            doc_io = io.BytesIO()
-                            doc.save(doc_io)
-                            
-                            # Creamos un nombre único para este archivo usando DNI y Grupo Familiar
-                            # Limpiamos el nombre por si tiene caracteres raros
+                            # Creamos una carpeta virtual para este beneficiario dentro del ZIP
                             nombre_limpio = str(b.grupo_familiar).replace('/', '_').replace('\\', '_')
-                            nombre_archivo = f"Constatacion_{b.dnibene}_{nombre_limpio}.docx"
+                            carpeta_beneficiario = f"{b.dnibene}_{nombre_limpio}/"
                             
-                            # Escribimos el documento dentro del ZIP
-                            zf.writestr(nombre_archivo, doc_io.getvalue())
+                            # 1. Cargar y generar FORMATO DE CONSTATACIÓN
+                            doc_const = DocxTemplate("FORMATO DE CONSTATACIÓN.docx")
+                            doc_const.render(contexto)
+                            
+                            doc_io_const = io.BytesIO()
+                            doc_const.save(doc_io_const)
+                            
+                            nombre_archivo_const = f"{carpeta_beneficiario}FORMATO_CONSTATACION_{b.dnibene}.docx"
+                            zf.writestr(nombre_archivo_const, doc_io_const.getvalue())
+                            
+                            # 2. Elegir y generar INFORME TÉCNICO (Senia o Coquitos)
+                            et_lower = str(mi_empresa.et).lower()
+                            if 'coquitos' in et_lower:
+                                plantilla_informe = "INFORME_TECNICO_COQUITOS.docx"
+                            elif 'senia' in et_lower:
+                                plantilla_informe = "INFORME_TECNICO_SENIA.docx"
+                            else:
+                                plantilla_informe = None
+                                
+                            print(f"ET procesado: '{et_lower}' | Plantilla seleccionada: {plantilla_informe}")
+                                
+                            if plantilla_informe:
+                                doc_inf = DocxTemplate(plantilla_informe)
+                                doc_inf.render(contexto)
+                                
+                                doc_io_inf = io.BytesIO()
+                                doc_inf.save(doc_io_inf)
+                                
+                                nombre_archivo_inf = f"{carpeta_beneficiario}INFORME_{b.dnibene}.docx"
+                                zf.writestr(nombre_archivo_inf, doc_io_inf.getvalue())
                     
                     # Preparamos el ZIP para enviarlo
                     memory_zip.seek(0)
