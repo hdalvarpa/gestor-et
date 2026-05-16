@@ -5,12 +5,17 @@ from reportlab.lib.pagesizes import letter, A4
 from datetime import datetime
 import io
 import os
+import pandas as pd
 from models.predio import Predio
 from models.jefe import Jefe
 from models.conyuge import Conyuge
 from models.carga_familiar import CargaFamiliar
 from models.familiar_adicional import FamiliarAdicional
 from models.contacto import Contacto
+from models.empresa import Empresa
+from models.beneficiario import Beneficiario
+from docxtpl import DocxTemplate
+import jinja2
 
 app = Flask(__name__)
 
@@ -51,10 +56,141 @@ def formulario():
     return render_template('formulario.html')
 
 # 3.5 RUTA CONSTATACION
-@app.route('/constatacion')
+@app.route('/constatacion', methods=['GET', 'POST'])
 def constatacion():
+    if request.method == 'POST':
+        archivo = request.files.get('archivo_excel')
+
+        if archivo and archivo.filename != '':
+            try:
+                # Leemos la hoja 'ID EMPRESA'. Por defecto, pandas toma la fila 1 como cabecera.
+                df = pd.read_excel(archivo, sheet_name='ID EMPRESA')
+                
+                # df.iloc[0] obtiene la primera fila de valores (que es la fila 2 en tu Excel)
+                primera_fila = df.iloc[0]
+                
+                # Extraemos los datos e instanciamos nuestra clase Empresa
+                mi_empresa = Empresa(
+                    dnirl=primera_fila.get('DNI', ''),
+                    rl=primera_fila.get('RL', ''),
+                    et=primera_fila.get('ET', ''),
+                    dir_geret=primera_fila.get('DIR GERET', ''),
+                    ruc=primera_fila.get('RUC', ''),
+                    cod_reg=primera_fila.get('COD REG', ''),
+                    dni_ing=primera_fila.get('DNI ING', ''),
+                    cip=primera_fila.get('CIP', ''),
+                    nombre_ing=primera_fila.get('NOMBRE ING', '')
+                )
+                
+                print("--- Datos extraídos de la empresa ---")
+                print(f"DNI: {mi_empresa.dnirl} | RUC: {mi_empresa.ruc} | Empresa(ET): {mi_empresa.et}")
+                print(f"Ingeniero: {mi_empresa.nombre_ing} (CIP: {mi_empresa.cip})")
+                print("-------------------------------------")
+                
+                # --- LEER HOJA DE BENEFICIARIOS ---
+                # pandas lee todas las filas con datos automáticamente
+                df_beneficiarios = pd.read_excel(archivo, sheet_name='BENEFICIARIOS')
+                
+                # Como me indicaste, usamos el DNI para detenernos/filtrar.
+                # dropna(subset=['DNI']) elimina cualquier fila donde el DNI esté vacío (NaN)
+                df_beneficiarios = df_beneficiarios.dropna(subset=['DNI'])
+                
+                # Lista donde guardaremos nuestros objetos Beneficiario
+                lista_beneficiarios = []
+                
+                # Convertimos las filas limpias en una lista de diccionarios temporales
+                filas_diccionarios = df_beneficiarios.to_dict('records')
+                
+                # Recorremos cada fila para crear un objeto Beneficiario y agregarlo a nuestra lista
+                for fila in filas_diccionarios:
+                    nuevo_beneficiario = Beneficiario(
+                        item=fila.get('ITEM', ''),
+                        dnibene=fila.get('DNI', ''),
+                        grupo_familiar=fila.get('GRUPO FAMILIAR', ''),
+                        direccion_predio=fila.get('DIRECCION PREDIO', ''),
+                        partida=fila.get('PARTIDA', ''),
+                        sin_agua=fila.get('SIN AGUA', ''),
+                        sin_saneamiento=fila.get('SIN SANEAMIENTO', ''),
+                        distrito=fila.get('DISTRITO', ''),
+                        provincia=fila.get('PROVINCIA', '')
+                    )
+                    lista_beneficiarios.append(nuevo_beneficiario)
+                
+                print(f"\n--- Se encontraron {len(lista_beneficiarios)} beneficiarios ---")
+                
+                # ====== GENERACIÓN DEL DOCUMENTO WORD ======
+                if len(lista_beneficiarios) > 0:
+                    primer_beneficiario = lista_beneficiarios[0]
+                    
+                    # Lógica para SI/NO AGUA
+                    if pd.isna(primer_beneficiario.sin_agua) or str(primer_beneficiario.sin_agua).strip() == '' or str(primer_beneficiario.sin_agua).lower() == 'nan':
+                        # Si viene vacío, significa que SÍ tiene agua
+                        si_agua = "X"
+                        no_agua = ""
+                    else:
+                        # Si tiene algo escrito, significa que NO tiene agua
+                        si_agua = ""
+                        no_agua = "X"
+                        
+                    # Lógica para SI/NO SANEAMIENTO
+                    if pd.isna(primer_beneficiario.sin_saneamiento) or str(primer_beneficiario.sin_saneamiento).strip() == '' or str(primer_beneficiario.sin_saneamiento).lower() == 'nan':
+                        si_saneamiento = "X"
+                        no_saneamiento = ""
+                    else:
+                        si_saneamiento = ""
+                        no_saneamiento = "X"
+                        
+                    # Mapeo de los datos del Excel a las etiquetas de tu Word
+                    contexto = {
+                        'RL': mi_empresa.rl,
+                        'DNIRL': mi_empresa.dnirl,
+                        'DOMICILIADORL': mi_empresa.dir_geret,
+                        'ET': mi_empresa.et,
+                        'RUC': mi_empresa.ruc,
+                        'CODIGOREGISTRO': mi_empresa.cod_reg,
+                        'DIRECCIONPREDIO': primer_beneficiario.direccion_predio,
+                        'PARTIDA': primer_beneficiario.partida,
+                        'GRUPOFAMILIAR': primer_beneficiario.grupo_familiar,
+                        'DNIBENEFICIARIO': primer_beneficiario.dnibene,
+                        'SIAGUA': si_agua,
+                        'NOAGUA': no_agua,
+                        'SISANEAMIENTO': si_saneamiento,
+                        'NOSANEAMIENTO': no_saneamiento,
+                        'NOMBREING': mi_empresa.nombre_ing,
+                        'FECHA': datetime.now().strftime("%d/%m/%Y")
+                    }
+                    
+                    # Cargar la plantilla
+                    doc = DocxTemplate("FORMATO DE CONSTATACIÓN.docx")
+                    
+                    # Reemplazamos los datos usando las etiquetas {{ }} por defecto de Jinja
+                    doc.render(contexto)
+                    
+                    # Guardamos el Word en memoria
+                    doc_io = io.BytesIO()
+                    doc.save(doc_io)
+                    doc_io.seek(0)
+                    
+                    # Devolvemos el archivo al navegador para que se descargue
+                    return send_file(
+                        doc_io,
+                        as_attachment=True,
+                        download_name=f"Constatacion_{primer_beneficiario.dnibene}.docx",
+                        mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    )
+
+            except ValueError:
+                print("Error: No se encontró la hoja llamada 'ID EMPRESA' en el Excel.")
+            except Exception as e:
+                print(f"Error al leer el archivo Excel: {str(e)}")
+
     # Renderiza el formato de constatacion
     return render_template('constatacion.html')
+
+# 3.6 RUTA DESCARGAR PLANTILLA EXCEL
+@app.route('/descargar_plantilla_fc')
+def descargar_plantilla_fc():
+    return send_file('PLANTILLA_FC.xlsx', as_attachment=True)
 
 # 4. RUTA GENERAR PDF (La lógica pesada)
 @app.route('/generar', methods=['POST'])

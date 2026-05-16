@@ -2,3 +2,7 @@ Flask
 reportlab
 pypdf
 gunicorn
+pandas
+openpyxl
+docxtpl
+jinja2
