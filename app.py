@@ -5,6 +5,7 @@ from reportlab.lib.pagesizes import letter, A4
 from datetime import datetime
 import io
 import os
+import zipfile
 import pandas as pd
 from models.predio import Predio
 from models.jefe import Jefe
@@ -63,8 +64,8 @@ def constatacion():
 
         if archivo and archivo.filename != '':
             try:
-                # Leemos la hoja 'ID EMPRESA'. Por defecto, pandas toma la fila 1 como cabecera.
-                df = pd.read_excel(archivo, sheet_name='ID EMPRESA')
+                # Leemos la hoja 'ID EMPRESA'. Usamos dtype=str para evitar el .0 en los números
+                df = pd.read_excel(archivo, sheet_name='ID EMPRESA', dtype=str)
                 
                 # df.iloc[0] obtiene la primera fila de valores (que es la fila 2 en tu Excel)
                 primera_fila = df.iloc[0]
@@ -88,8 +89,8 @@ def constatacion():
                 print("-------------------------------------")
                 
                 # --- LEER HOJA DE BENEFICIARIOS ---
-                # pandas lee todas las filas con datos automáticamente
-                df_beneficiarios = pd.read_excel(archivo, sheet_name='BENEFICIARIOS')
+                # Usamos dtype=str para que DNI, RUC y todo se lea como texto puro y no como número decimal
+                df_beneficiarios = pd.read_excel(archivo, sheet_name='BENEFICIARIOS', dtype=str)
                 
                 # Como me indicaste, usamos el DNI para detenernos/filtrar.
                 # dropna(subset=['DNI']) elimina cualquier fila donde el DNI esté vacío (NaN)
@@ -109,8 +110,8 @@ def constatacion():
                         grupo_familiar=fila.get('GRUPO FAMILIAR', ''),
                         direccion_predio=fila.get('DIRECCION PREDIO', ''),
                         partida=fila.get('PARTIDA', ''),
-                        sin_agua=fila.get('SIN \nAGUA', ''),
-                        sin_saneamiento=fila.get('SIN \nSANEAMIENTO', ''),
+                        sin_agua=fila.get('SIN AGUA', ''),
+                        sin_saneamiento=fila.get('SIN SANEAMIENTO', ''),
                         distrito=fila.get('DISTRITO', ''),
                         provincia=fila.get('PROVINCIA', '')
                     )
@@ -120,64 +121,78 @@ def constatacion():
                 
                 # ====== GENERACIÓN DEL DOCUMENTO WORD ======
                 if len(lista_beneficiarios) > 0:
-                    primer_beneficiario = lista_beneficiarios[0]
                     
-                    # Lógica para SI/NO AGUA
-                    if pd.isna(primer_beneficiario.sin_agua) or str(primer_beneficiario.sin_agua).strip() == '' or str(primer_beneficiario.sin_agua).lower() == 'nan':
-                        # Si viene vacío, significa que SÍ tiene agua
-                        si_agua = "X"
-                        no_agua = ""
-                    else:
-                        # Si tiene algo escrito, significa que NO tiene agua
-                        si_agua = ""
-                        no_agua = "X"
+                    # Creamos un archivo ZIP en memoria para guardar todos los documentos
+                    memory_zip = io.BytesIO()
+                    with zipfile.ZipFile(memory_zip, 'w', zipfile.ZIP_DEFLATED) as zf:
                         
-                    # Lógica para SI/NO SANEAMIENTO
-                    if pd.isna(primer_beneficiario.sin_saneamiento) or str(primer_beneficiario.sin_saneamiento).strip() == '' or str(primer_beneficiario.sin_saneamiento).lower() == 'nan':
-                        si_saneamiento = "X"
-                        no_saneamiento = ""
-                    else:
-                        si_saneamiento = ""
-                        no_saneamiento = "X"
-                        
-                    # Mapeo de los datos del Excel a las etiquetas de tu Word
-                    contexto = {
-                        'RL': mi_empresa.rl,
-                        'DNIRL': mi_empresa.dnirl,
-                        'DOMICILIADORL': mi_empresa.dir_geret,
-                        'ET': mi_empresa.et,
-                        'RUC': mi_empresa.ruc,
-                        'CODIGOREGISTRO': mi_empresa.cod_reg,
-                        'DIRECCIONPREDIO': primer_beneficiario.direccion_predio,
-                        'PARTIDA': primer_beneficiario.partida,
-                        'GRUPOFAMILIAR': primer_beneficiario.grupo_familiar,
-                        'DNIBENEFICIARIO': primer_beneficiario.dnibene,
-                        'SIAGUA': si_agua,
-                        'NOAGUA': no_agua,
-                        'SISANEAMIENTO': si_saneamiento,
-                        'NOSANEAMIENTO': no_saneamiento,
-                        'NOMBREING': mi_empresa.nombre_ing,
-                        'DNIING': mi_empresa.dni_ing,
-                        'FECHA': datetime.now().strftime("%d/%m/%Y")
-                    }
+                        # Hacemos un bucle para procesar a TODOS los beneficiarios
+                        for b in lista_beneficiarios:
+                            
+                            # Lógica para SI/NO AGUA
+                            if pd.isna(b.sin_agua) or str(b.sin_agua).strip() == '' or str(b.sin_agua).lower() == 'nan':
+                                si_agua = "X"
+                                no_agua = ""
+                            else:
+                                si_agua = ""
+                                no_agua = "X"
+                                
+                            # Lógica para SI/NO SANEAMIENTO
+                            if pd.isna(b.sin_saneamiento) or str(b.sin_saneamiento).strip() == '' or str(b.sin_saneamiento).lower() == 'nan':
+                                si_saneamiento = "X"
+                                no_saneamiento = ""
+                            else:
+                                si_saneamiento = ""
+                                no_saneamiento = "X"
+                                
+                            # Mapeo de los datos del Excel a las etiquetas de tu Word
+                            contexto = {
+                                'RL': mi_empresa.rl,
+                                'DNIRL': mi_empresa.dnirl,
+                                'DOMICILIADORL': mi_empresa.dir_geret,
+                                'ET': mi_empresa.et,
+                                'RUC': mi_empresa.ruc,
+                                'CODIGOREGISTRO': mi_empresa.cod_reg,
+                                'DIRECCIONPREDIO': b.direccion_predio,
+                                'PARTIDA': b.partida,
+                                'GRUPOFAMILIAR': b.grupo_familiar,
+                                'DNIBENEFICIARIO': b.dnibene,
+                                'SIAGUA': si_agua,
+                                'NOAGUA': no_agua,
+                                'SISANEAMIENTO': si_saneamiento,
+                                'NOSANEAMIENTO': no_saneamiento,
+                                'NOMBREING': mi_empresa.nombre_ing,
+                                'DNIING': mi_empresa.dni_ing,
+                                'FECHA': datetime.now().strftime("%d/%m/%Y")
+                            }
+                            
+                            # Cargar la plantilla para este beneficiario
+                            doc = DocxTemplate("FORMATO DE CONSTATACIÓN.docx")
+                            
+                            # Reemplazamos los datos
+                            doc.render(contexto)
+                            
+                            # Guardamos este documento en memoria
+                            doc_io = io.BytesIO()
+                            doc.save(doc_io)
+                            
+                            # Creamos un nombre único para este archivo usando DNI y Grupo Familiar
+                            # Limpiamos el nombre por si tiene caracteres raros
+                            nombre_limpio = str(b.grupo_familiar).replace('/', '_').replace('\\', '_')
+                            nombre_archivo = f"Constatacion_{b.dnibene}_{nombre_limpio}.docx"
+                            
+                            # Escribimos el documento dentro del ZIP
+                            zf.writestr(nombre_archivo, doc_io.getvalue())
                     
-                    # Cargar la plantilla
-                    doc = DocxTemplate("FORMATO DE CONSTATACIÓN.docx")
+                    # Preparamos el ZIP para enviarlo
+                    memory_zip.seek(0)
                     
-                    # Reemplazamos los datos usando las etiquetas {{ }} por defecto de Jinja
-                    doc.render(contexto)
-                    
-                    # Guardamos el Word en memoria
-                    doc_io = io.BytesIO()
-                    doc.save(doc_io)
-                    doc_io.seek(0)
-                    
-                    # Devolvemos el archivo al navegador para que se descargue
+                    # Devolvemos el archivo ZIP al navegador para que se descargue
                     return send_file(
-                        doc_io,
+                        memory_zip,
                         as_attachment=True,
-                        download_name=f"Constatacion_{primer_beneficiario.dnibene}.docx",
-                        mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        download_name="Constataciones_Completas.zip",
+                        mimetype="application/zip"
                     )
 
             except ValueError:
