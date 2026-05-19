@@ -126,6 +126,15 @@ def constatacion():
                     memory_zip = io.BytesIO()
                     with zipfile.ZipFile(memory_zip, 'w', zipfile.ZIP_DEFLATED) as zf:
                         
+                        def safe_text(val):
+                            if pd.isna(val) or val is None:
+                                return ""
+                            val_str = str(val)
+                            if val_str.lower() == 'nan':
+                                return ""
+                            # Escapamos los caracteres que rompen el XML de Word
+                            return val_str.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
                         # Hacemos un bucle para procesar a TODOS los beneficiarios
                         for b in lista_beneficiarios:
                             
@@ -145,26 +154,26 @@ def constatacion():
                                 si_saneamiento = ""
                                 no_saneamiento = "X"
                                 
-                            # Mapeo de los datos del Excel a las etiquetas de tu Word
+                            # Mapeo de los datos del Excel a las etiquetas de tu Word, limpiando caracteres XML
                             contexto = {
-                                'RL': mi_empresa.rl,
-                                'DNIRL': mi_empresa.dnirl,
-                                'DOMICILIADORL': mi_empresa.dir_geret,
-                                'ET': mi_empresa.et,
-                                'RUC': mi_empresa.ruc,
-                                'CODIGOREGISTRO': mi_empresa.cod_reg,
-                                'DIRECCIONPREDIO': b.direccion_predio,
-                                'PARTIDA': b.partida,
-                                'GRUPOFAMILIAR': b.grupo_familiar,
-                                'DNIBENEFICIARIO': b.dnibene,
+                                'RL': safe_text(mi_empresa.rl),
+                                'DNIRL': safe_text(mi_empresa.dnirl),
+                                'DOMICILIADORL': safe_text(mi_empresa.dir_geret),
+                                'ET': safe_text(mi_empresa.et),
+                                'RUC': safe_text(mi_empresa.ruc),
+                                'CODIGOREGISTRO': safe_text(mi_empresa.cod_reg),
+                                'DIRECCIONPREDIO': safe_text(b.direccion_predio),
+                                'PARTIDA': safe_text(b.partida),
+                                'GRUPOFAMILIAR': safe_text(b.grupo_familiar),
+                                'DNIBENEFICIARIO': safe_text(b.dnibene),
                                 'SIAGUA': si_agua,
                                 'NOAGUA': no_agua,
                                 'SISANEAMIENTO': si_saneamiento,
                                 'NOSANEAMIENTO': no_saneamiento,
-                                'NOMBREING': mi_empresa.nombre_ing,
-                                'DNIING': mi_empresa.dni_ing,
-                                'CIP': mi_empresa.cip,
-                                'DISTRITOBENE': b.distrito,
+                                'NOMBREING': safe_text(mi_empresa.nombre_ing),
+                                'DNIING': safe_text(mi_empresa.dni_ing),
+                                'CIP': safe_text(mi_empresa.cip),
+                                'DISTRITOBENE': safe_text(b.distrito),
                                 'FECHA': datetime.now().strftime("%d/%m/%Y")
                             }
                             
