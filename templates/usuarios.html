@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Gestión de Usuarios</h2>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevoUsuario">
+        ➕ Nuevo Usuario
+    </button>
+</div>
+
+<!-- Mensajes Flash (Errores/Éxitos) -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th scope="col">ID</th>
+                    <th scope="col">Nombre de Usuario</th>
+                    <th scope="col" class="text-end">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in usuarios %}
+                <tr>
+                    <td>{{ u.id }}</td>
+                    <td><strong>{{ u.username }}</strong></td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-secondary me-2" data-bs-toggle="modal" data-bs-target="#modalClave-{{ u.id }}">
+                            🔑 Cambiar Clave
+                        </button>
+                        {% if session.get('usuario') != u.username %}
+                        <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalEliminar-{{ u.id }}">
+                            🗑️ Eliminar
+                        </button>
+                        {% else %}
+                        <button class="btn btn-sm btn-outline-danger disabled" title="No puedes eliminar tu propio usuario">
+                            🗑️ Eliminar
+                        </button>
+                        {% endif %}
+                    </td>
+                </tr>
+
+                <!-- Modal Cambiar Clave -->
+                <div class="modal fade" id="modalClave-{{ u.id }}" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <form action="/usuarios/cambiar_clave/{{ u.id }}" method="POST">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Cambiar contraseña de {{ u.username }}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body text-start">
+                                    <div class="mb-3">
+                                        <label for="nueva_clave" class="form-label">Nueva Contraseña</label>
+                                        <input type="password" class="form-control" name="nueva_clave" required minlength="4">
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                    <button type="submit" class="btn btn-primary">Actualizar Clave</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Modal Eliminar -->
+                <div class="modal fade" id="modalEliminar-{{ u.id }}" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <form action="/usuarios/eliminar/{{ u.id }}" method="POST">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title text-danger">⚠️ Confirmar Eliminación</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body text-start">
+                                    <p>¿Estás seguro de que deseas eliminar permanentemente al usuario <strong>{{ u.username }}</strong>?</p>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                    <button type="submit" class="btn btn-danger">Sí, Eliminar</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal Nuevo Usuario -->
+<div class="modal fade" id="modalNuevoUsuario" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form action="/usuarios/crear" method="POST">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Crear Nuevo Usuario</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-start">
+                    <div class="mb-3">
+                        <label for="nuevo_usuario" class="form-label">Nombre de Usuario</label>
+                        <input type="text" class="form-control" name="nuevo_usuario" required pattern="[A-Za-z0-9_-]+" title="Solo letras, números, guiones y guiones bajos">
+                    </div>
+                    <div class="mb-3">
+                        <label for="nueva_clave" class="form-label">Contraseña</label>
+                        <input type="password" class="form-control" name="nueva_clave" required minlength="4">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Registrar Usuario</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}

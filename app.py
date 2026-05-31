@@ -1,4 +1,5 @@
-from flask import Flask, render_template, request, send_file, redirect, url_for
+from flask import Flask, render_template, request, send_file, redirect, url_for, session, flash
+from functools import wraps
 from pypdf import PdfReader, PdfWriter
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter, A4
@@ -17,13 +18,42 @@ from models.empresa import Empresa
 from models.beneficiario import Beneficiario
 from docxtpl import DocxTemplate
 import jinja2
+from werkzeug.security import generate_password_hash, check_password_hash
+from models.database import db
+from models.usuario import Usuario
 
 app = Flask(__name__)
+app.secret_key = 'clave_secreta_ptp_fipi_2025'  # Clave para firmar las sesiones
+
+# --- CONFIGURACIÓN BASE DE DATOS ---
+url_bd = os.environ.get('DATABASE_URL', 'sqlite:///local.db')
+if url_bd.startswith("postgres://"):
+    url_bd = url_bd.replace("postgres://", "postgresql://", 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = url_bd
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db.init_app(app)
+
+# Inicializar BD (Crear admin por defecto si no existe)
+with app.app_context():
+    db.create_all()
+    if not Usuario.query.filter_by(username='admin').first():
+        hashed_pw = generate_password_hash('1234')
+        admin_user = Usuario(username='admin', password_hash=hashed_pw)
+        db.session.add(admin_user)
+        db.session.commit()
 
 # --- CONFIGURACIÓN ---
 NOMBRE_PLANTILLA = "FORMULARIO DE INSCRIPCION 2025 II.pdf"  # El nombre de tu archivo PDF real
-USUARIO_ADMIN = "admin"
-CLAVE_ADMIN = "1234"
+
+# --- DECORADOR DE PROTECCIÓN DE RUTAS ---
+def login_requerido(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'usuario' not in session:
+            return redirect(url_for('mostrar_login'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 @app.route('/') 
 def mostrar_login():
@@ -35,9 +65,11 @@ def login():
         usuario = request.form.get('usuario')
         password = request.form.get('password')
         
-        # Validación simple
-        if usuario == USUARIO_ADMIN and password == CLAVE_ADMIN:
-            # ¡Aquí está el cambio! Ahora redirige al Dashboard, no al formulario directo
+        # Validación con Base de Datos
+        user = Usuario.query.filter_by(username=usuario).first()
+        
+        if user and check_password_hash(user.password_hash, password):
+            session['usuario'] = user.username  # Registramos al usuario en la sesión
             return redirect(url_for('dashboard'))
         else:
             return render_template('login.html', error='Usuario o contraseña incorrectos')
@@ -46,18 +78,21 @@ def login():
 
 # 2. RUTA DASHBOARD (La bienvenida)
 @app.route('/dashboard')
+@login_requerido
 def dashboard():
     # Renderiza la página de bienvenida que hereda de base.html
     return render_template('dashboard.html')
 
 # 3. RUTA FORMULARIO (La herramienta)
 @app.route('/formulario')
+@login_requerido
 def formulario():
     # Renderiza el formulario que hereda de base.html
     return render_template('formulario.html')
 
 # 3.5 RUTA CONSTATACION
 @app.route('/constatacion', methods=['GET', 'POST'])
+@login_requerido
 def constatacion():
     if request.method == 'POST':
         archivo = request.files.get('archivo_excel')
@@ -233,8 +268,68 @@ def constatacion():
 
 # 3.6 RUTA DESCARGAR PLANTILLA EXCEL
 @app.route('/descargar_plantilla_fc')
+@login_requerido
 def descargar_plantilla_fc():
     return send_file('PLANTILLA_FC.xlsx', as_attachment=True)
+
+# --- RUTA LOGOUT (Cierre de sesión seguro) ---
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('mostrar_login'))
+
+# ==========================================
+# GESTIÓN DE USUARIOS
+# ==========================================
+
+@app.route('/usuarios')
+@login_requerido
+def listar_usuarios():
+    usuarios = Usuario.query.all()
+    return render_template('usuarios.html', usuarios=usuarios)
+
+@app.route('/usuarios/crear', methods=['POST'])
+@login_requerido
+def crear_usuario():
+    nuevo_username = request.form.get('nuevo_usuario')
+    nueva_clave = request.form.get('nueva_clave')
+    
+    if Usuario.query.filter_by(username=nuevo_username).first():
+        flash('Error: El nombre de usuario ya existe.', 'danger')
+    else:
+        hashed_pw = generate_password_hash(nueva_clave)
+        nuevo_user = Usuario(username=nuevo_username, password_hash=hashed_pw)
+        db.session.add(nuevo_user)
+        db.session.commit()
+        flash(f'Usuario {nuevo_username} creado exitosamente.', 'success')
+        
+    return redirect(url_for('listar_usuarios'))
+
+@app.route('/usuarios/cambiar_clave/<int:id>', methods=['POST'])
+@login_requerido
+def cambiar_clave(id):
+    usuario = Usuario.query.get_or_404(id)
+    nueva_clave = request.form.get('nueva_clave')
+    
+    usuario.password_hash = generate_password_hash(nueva_clave)
+    db.session.commit()
+    flash(f'Contraseña actualizada para {usuario.username}.', 'success')
+    
+    return redirect(url_for('listar_usuarios'))
+
+@app.route('/usuarios/eliminar/<int:id>', methods=['POST'])
+@login_requerido
+def eliminar_usuario(id):
+    usuario = Usuario.query.get_or_404(id)
+    
+    if session.get('usuario') == usuario.username:
+        flash('Error: No puedes eliminar el usuario con el que tienes sesión iniciada.', 'danger')
+    else:
+        db.session.delete(usuario)
+        db.session.commit()
+        flash(f'Usuario {usuario.username} eliminado.', 'success')
+        
+    return redirect(url_for('listar_usuarios'))
 
 # 4. RUTA GENERAR PDF (La lógica pesada)
 @app.route('/generar', methods=['POST'])

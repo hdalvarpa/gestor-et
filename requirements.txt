@@ -6,3 +6,6 @@ pandas
 openpyxl
 docxtpl
 jinja2
+Flask-SQLAlchemy
+psycopg2-binary
+Werkzeug

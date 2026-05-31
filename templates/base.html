@@ -46,8 +46,8 @@
         <span class="navbar-brand mb-0 h1">🚀 Sistema PDF</span>
 
         <div class="ms-auto d-flex align-items-center">
-            <span class="text-light me-3">Hola, Admin</span>
-            <a href="/" class="btn btn-outline-danger btn-sm">Cerrar Sesión</a>
+            <span class="text-light me-3">Hola, <strong>{{ session.get('usuario') }}</strong></span>
+            <a href="/logout" class="btn btn-outline-danger btn-sm">Cerrar Sesión</a>
         </div>
     </nav>
 
@@ -63,7 +63,7 @@
                 <a href="/dashboard">🏠 Inicio</a>
                 <a href="/formulario">📄 Nuevo Documento</a>
                 <a href="/constatacion">📝 Formato de Constatación</a>
-                <a href="/usuarios">👥 Usuarios (En construcción)</a>
+                <a href="/usuarios">👥 Gestión de Usuarios</a>
                 <a href="/plantillas">📂 Plantillas (En construcción)</a>
             </div>
         </div>
@@ -77,7 +77,7 @@
                     <a href="/dashboard">🏠 Inicio</a>
                     <a href="/formulario">📄 Nuevo Documento</a>
                     <a href="/constatacion">📝 Formato de Constatación</a>
-                    <a href="/usuarios">👥 Usuarios (En construcción)</a>
+                    <a href="/usuarios">👥 Gestión de Usuarios</a>
                     <a href="/plantillas">📂 Plantillas (En construcción)</a>
                 </div>
             </div>
