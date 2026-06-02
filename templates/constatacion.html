@@ -1,17 +1,16 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="card shadow-sm">
-    <div class="card-header bg-primary text-white">
-        <h4 class="mb-0">Generar Formato de Constatación</h4>
+<div class="card">
+    <div class="card-header">
+        <h4 class="mb-0 fw-bold">Generar Formato de Constatación</h4>
     </div>
     <div class="card-body">
         <form action="#" method="POST" enctype="multipart/form-data" onkeydown="return event.key != 'Enter';">
-            <h5 class="mb-3 border-bottom pb-2 text-primary">Cargar Datos</h5>
+            <h5 class="mb-4 pb-2 border-bottom text-primary">Cargar Datos</h5>
 
-            <div class="mb-4 bg-light p-3 rounded border">
-                <p class="mb-2 text-muted">Antes de cargar sus datos, por favor descargue y llene la plantilla de Excel:
-                </p>
+            <div class="mb-4 p-4 rounded" style="background: rgba(99, 102, 241, 0.04); border: 1px solid rgba(99, 102, 241, 0.15);">
+                <p class="mb-3 text-light" style="font-weight: 300;">Antes de cargar sus datos, por favor descargue y llene la plantilla de Excel.</p>
                 <a href="/descargar_plantilla_fc" class="btn btn-outline-info">
                     ⬇️ Descargar Plantilla
                 </a>

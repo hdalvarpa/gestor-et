@@ -26,7 +26,10 @@ app = Flask(__name__)
 app.secret_key = 'clave_secreta_ptp_fipi_2025'  # Clave para firmar las sesiones
 
 # --- CONFIGURACIÓN BASE DE DATOS ---
-url_bd = os.environ.get('DATABASE_URL', 'sqlite:///local.db')
+# Pon aquí tu cadena de conexión de Development de Neon DB.
+# Ejemplo: 'postgresql://usuario:contraseña@ep-tu-bd-dev.neon.tech/tu_bd_dev?sslmode=require'
+url_bd = os.environ.get('DATABASE_URL', 'PEGAR_AQUI_TU_URL_DE_NEON_DB')
+
 if url_bd.startswith("postgres://"):
     url_bd = url_bd.replace("postgres://", "postgresql://", 1)
 
@@ -34,14 +37,20 @@ app.config['SQLALCHEMY_DATABASE_URI'] = url_bd
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 
-# Inicializar BD (Crear admin por defecto si no existe)
+# Como tú diseñarás y crearás las tablas directamente en Neon DB (usando el SQL que te pasé),
+# ya no necesitamos que Flask intente crear las tablas por nosotros.
 with app.app_context():
-    db.create_all()
-    if not Usuario.query.filter_by(username='admin').first():
-        hashed_pw = generate_password_hash('1234')
-        admin_user = Usuario(username='admin', password_hash=hashed_pw)
-        db.session.add(admin_user)
-        db.session.commit()
+    # db.create_all()  <-- Comentado para evitar que Flask modifique tu esquema de Neon DB
+    
+    # Try-except por si la tabla usuarios aún no ha sido creada en Neon DB
+    try:
+        if not Usuario.query.filter_by(username='admin').first():
+            hashed_pw = generate_password_hash('1234')
+            admin_user = Usuario(username='admin', password_hash=hashed_pw)
+            db.session.add(admin_user)
+            db.session.commit()
+    except Exception as e:
+        print("Aún no se ha creado la tabla usuarios en Neon DB o hay un error de conexión:", e)
 
 # --- CONFIGURACIÓN ---
 NOMBRE_PLANTILLA = "FORMULARIO DE INSCRIPCION 2025 II.pdf"  # El nombre de tu archivo PDF real
