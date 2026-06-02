@@ -9,3 +9,4 @@ jinja2
 Flask-SQLAlchemy
 psycopg2-binary
 Werkzeug
+python-dotenv

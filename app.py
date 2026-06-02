@@ -7,6 +7,7 @@ from datetime import datetime
 import io
 import os
 import zipfile
+from dotenv import load_dotenv
 import pandas as pd
 from models.predio import Predio
 from models.jefe import Jefe
@@ -21,36 +22,28 @@ import jinja2
 from werkzeug.security import generate_password_hash, check_password_hash
 from models.database import db
 from models.usuario import Usuario
+from models.persona import Persona
 
 app = Flask(__name__)
 app.secret_key = 'clave_secreta_ptp_fipi_2025'  # Clave para firmar las sesiones
 
-# --- CONFIGURACIÓN BASE DE DATOS ---
-# Pon aquí tu cadena de conexión de Development de Neon DB.
-# Ejemplo: 'postgresql://usuario:contraseña@ep-tu-bd-dev.neon.tech/tu_bd_dev?sslmode=require'
-url_bd = os.environ.get('DATABASE_URL', 'PEGAR_AQUI_TU_URL_DE_NEON_DB')
+# Cargar variables de entorno desde el archivo .env si existe
+load_dotenv()
 
-if url_bd.startswith("postgres://"):
+# --- CONFIGURACIÓN BASE DE DATOS ---
+# En Render, la cadena de conexión se inyecta automáticamente en la variable DATABASE_URL.
+url_bd = os.environ.get('DATABASE_URL')
+
+# Render a veces proporciona la URL con "postgres://", pero SQLAlchemy requiere "postgresql://"
+if url_bd and url_bd.startswith("postgres://"):
     url_bd = url_bd.replace("postgres://", "postgresql://", 1)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = url_bd
+# Fallback para desarrollo local (por ejemplo, base de datos SQLite u otra URL)
+app.config['SQLALCHEMY_DATABASE_URI'] = url_bd or 'sqlite:///local.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 
-# Como tú diseñarás y crearás las tablas directamente en Neon DB (usando el SQL que te pasé),
-# ya no necesitamos que Flask intente crear las tablas por nosotros.
-with app.app_context():
-    # db.create_all()  <-- Comentado para evitar que Flask modifique tu esquema de Neon DB
-    
-    # Try-except por si la tabla usuarios aún no ha sido creada en Neon DB
-    try:
-        if not Usuario.query.filter_by(username='admin').first():
-            hashed_pw = generate_password_hash('1234')
-            admin_user = Usuario(username='admin', password_hash=hashed_pw)
-            db.session.add(admin_user)
-            db.session.commit()
-    except Exception as e:
-        print("Aún no se ha creado la tabla usuarios en Neon DB o hay un error de conexión:", e)
+
 
 # --- CONFIGURACIÓN ---
 NOMBRE_PLANTILLA = "FORMULARIO DE INSCRIPCION 2025 II.pdf"  # El nombre de tu archivo PDF real
@@ -301,17 +294,48 @@ def listar_usuarios():
 @login_requerido
 def crear_usuario():
     nuevo_username = request.form.get('nuevo_usuario')
+    nuevo_correo = request.form.get('nuevo_correo')
     nueva_clave = request.form.get('nueva_clave')
+    
+    nuevo_dni = request.form.get('nuevo_dni')
+    nuevo_nombres = request.form.get('nuevo_nombres')
+    nuevo_apellidos = request.form.get('nuevo_apellidos')
     
     if Usuario.query.filter_by(username=nuevo_username).first():
         flash('Error: El nombre de usuario ya existe.', 'danger')
+    elif Usuario.query.filter_by(correo_electronico=nuevo_correo).first():
+        flash('Error: El correo electrónico ya está registrado.', 'danger')
+    elif Persona.query.filter_by(numero_documento=nuevo_dni).first():
+        flash('Error: El DNI (número de documento) ya está registrado en el sistema.', 'danger')
     else:
-        hashed_pw = generate_password_hash(nueva_clave)
-        nuevo_user = Usuario(username=nuevo_username, password_hash=hashed_pw)
-        db.session.add(nuevo_user)
-        db.session.commit()
-        flash(f'Usuario {nuevo_username} creado exitosamente.', 'success')
-        
+        try:
+            # 1. Crear Persona primero
+            nueva_persona = Persona(
+                id_tipo_documento=1, # DNI
+                numero_documento=nuevo_dni,
+                nombres=nuevo_nombres.upper(),
+                apellidos=nuevo_apellidos.upper(),
+                correo=nuevo_correo
+            )
+            db.session.add(nueva_persona)
+            db.session.flush() # Flush para obtener el id_persona que asigna la BD
+            
+            # 2. Crear Usuario
+            hashed_pw = generate_password_hash(nueva_clave)
+            nuevo_user = Usuario(
+                username=nuevo_username, 
+                correo_electronico=nuevo_correo, 
+                password_hash=hashed_pw,
+                id_persona=nueva_persona.id_persona
+            )
+            db.session.add(nuevo_user)
+            db.session.commit()
+            
+            flash(f'Usuario {nuevo_username} y sus datos personales creados exitosamente.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Ocurrió un error al guardar en base de datos: {str(e)}', 'danger')
+            
     return redirect(url_for('listar_usuarios'))
 
 @app.route('/usuarios/cambiar_clave/<int:id>', methods=['POST'])

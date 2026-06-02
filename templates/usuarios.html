@@ -26,7 +26,9 @@
             <thead class="table-light">
                 <tr>
                     <th scope="col">ID</th>
-                    <th scope="col">Nombre de Usuario</th>
+                    <th scope="col">Nombre Completo (Persona)</th>
+                    <th scope="col">Usuario</th>
+                    <th scope="col">Correo</th>
                     <th scope="col" class="text-end">Acciones</th>
                 </tr>
             </thead>
@@ -34,7 +36,9 @@
                 {% for u in usuarios %}
                 <tr>
                     <td>{{ u.id }}</td>
+                    <td>{{ u.persona.nombres }} {{ u.persona.apellidos }}</td>
                     <td><strong>{{ u.username }}</strong></td>
+                    <td>{{ u.correo_electronico }}</td>
                     <td class="text-end">
                         <button class="btn btn-sm btn-outline-secondary me-2" data-bs-toggle="modal" data-bs-target="#modalClave-{{ u.id }}">
                             🔑 Cambiar Clave
@@ -112,9 +116,32 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body text-start">
+                    <h6 class="text-primary mb-3"><i class="bi bi-person-badge"></i> Datos Personales</h6>
+                    <div class="mb-3">
+                        <label for="nuevo_dni" class="form-label">Número de Documento (DNI)</label>
+                        <input type="text" class="form-control" name="nuevo_dni" required pattern="[0-9]{8,20}" title="Ingrese un número de documento válido">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="nuevo_nombres" class="form-label">Nombres</label>
+                            <input type="text" class="form-control" name="nuevo_nombres" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="nuevo_apellidos" class="form-label">Apellidos</label>
+                            <input type="text" class="form-control" name="nuevo_apellidos" required>
+                        </div>
+                    </div>
+                    
+                    <hr class="my-4">
+                    <h6 class="text-primary mb-3"><i class="bi bi-shield-lock"></i> Datos de Acceso (Usuario)</h6>
+                    
                     <div class="mb-3">
                         <label for="nuevo_usuario" class="form-label">Nombre de Usuario</label>
                         <input type="text" class="form-control" name="nuevo_usuario" required pattern="[A-Za-z0-9_-]+" title="Solo letras, números, guiones y guiones bajos">
+                    </div>
+                    <div class="mb-3">
+                        <label for="nuevo_correo" class="form-label">Correo Electrónico</label>
+                        <input type="email" class="form-control" name="nuevo_correo" required placeholder="ejemplo@empresa.com">
                     </div>
                     <div class="mb-3">
                         <label for="nueva_clave" class="form-label">Contraseña</label>
