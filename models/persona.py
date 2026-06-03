@@ -7,7 +7,8 @@ class Persona(db.Model):
     id_tipo_documento = db.Column(db.Integer, nullable=False, default=1) # 1 = DNI
     numero_documento = db.Column(db.String(20), unique=True, nullable=False)
     nombres = db.Column(db.String(100), nullable=False)
-    apellidos = db.Column(db.String(100), nullable=False)
+    apellido_paterno = db.Column(db.String(100), nullable=True)
+    apellido_materno = db.Column(db.String(100), nullable=True)
     fecha_nacimiento = db.Column(db.Date)
     telefono = db.Column(db.String(20))
     correo = db.Column(db.String(150))
@@ -17,4 +18,4 @@ class Persona(db.Model):
     # usuarios = db.relationship('Usuario', backref='persona', lazy=True)
     
     def __repr__(self):
-        return f'<Persona {self.nombres} {self.apellidos}>'
+        return f'<Persona {self.nombres} {self.apellido_paterno} {self.apellido_materno}>'

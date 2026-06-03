@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Gestión de Entidades Técnicas</h2>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevaEntidad">
+        ➕ Nueva Entidad Técnica
+    </button>
+</div>
+
+<!-- Mensajes Flash (Errores/Éxitos) -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th scope="col">RUC</th>
+                    <th scope="col">Razón Social</th>
+                    <th scope="col">Representante Legal</th>
+                    <th scope="col" class="text-end">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for et in entidades %}
+                <tr>
+                    <td><strong>{{ et.ruc }}</strong></td>
+                    <td>{{ et.razon_social }}</td>
+                    <td>
+                        {{ et.representante_legal.nombres }} {{ et.representante_legal.apellido_paterno }} {{ et.representante_legal.apellido_materno or '' }}
+                        <span class="badge bg-secondary ms-1 fw-normal" style="opacity: 0.8;">DNI: {{ et.representante_legal.numero_documento }}</span>
+                    </td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalEliminar-{{ et.id_entidad_tecnica }}">
+                            🗑️ Eliminar
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not entidades %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-4">No hay Entidades Técnicas registradas.</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% for et in entidades %}
+<!-- Modal Eliminar -->
+<div class="modal fade" id="modalEliminar-{{ et.id_entidad_tecnica }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form action="/entidades/eliminar/{{ et.id_entidad_tecnica }}" method="POST">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-danger">⚠️ Confirmar Eliminación</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-start">
+                    <p>¿Estás seguro de que deseas eliminar permanentemente a la entidad <strong>{{ et.razon_social }}</strong>?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" tabindex="-1">Cancelar</button>
+                    <button type="submit" class="btn btn-danger">Sí, Eliminar</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Modal Nueva Entidad -->
+<div class="modal fade" id="modalNuevaEntidad" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <form action="/entidades/crear" method="POST">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Registrar Nueva Entidad Técnica</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-start">
+                    
+                    <h6 class="text-primary mb-3"><i class="bi bi-building"></i> Datos de la Entidad Técnica</h6>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="ruc" class="form-label">RUC</label>
+                            <input type="text" class="form-control" name="ruc" required pattern="[0-9]{11}" title="El RUC debe tener 11 dígitos">
+                        </div>
+                        <div class="col-md-8 mb-3">
+                            <label for="razon_social" class="form-label">Razón Social</label>
+                            <input type="text" class="form-control" name="razon_social" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="direccion" class="form-label">Dirección</label>
+                            <input type="text" class="form-control" name="direccion">
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+                    <h6 class="text-primary mb-3"><i class="bi bi-person-tie"></i> Representante Legal</h6>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="rep_dni" class="form-label">DNI</label>
+                            <input type="text" class="form-control" name="rep_dni" required pattern="[0-9]{8,20}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="rep_nombres" class="form-label">Nombres</label>
+                            <input type="text" class="form-control" name="rep_nombres" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="rep_ap_paterno" class="form-label">Ap. Paterno</label>
+                            <input type="text" class="form-control" name="rep_ap_paterno" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="rep_ap_materno" class="form-label">Ap. Materno</label>
+                            <input type="text" class="form-control" name="rep_ap_materno">
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+                    <!-- La sección de Ingeniero Responsable fue removida de aquí -->
+                    
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Registrar Entidad</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Gestión de Ingenieros Responsables</h2>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevoIngeniero">
+        ➕ Nuevo Ingeniero
+    </button>
+</div>
+
+<!-- Mensajes Flash -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th scope="col">DNI</th>
+                    <th scope="col">CIP</th>
+                    <th scope="col">Apellidos y Nombres</th>
+                    <th scope="col" class="text-end">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ing in ingenieros %}
+                <tr>
+                    <td><strong>{{ ing.persona.numero_documento }}</strong></td>
+                    <td><span class="badge bg-primary px-3 py-2" style="font-size: 0.9rem;">CIP: {{ ing.cip }}</span></td>
+                    <td>{{ ing.persona.apellido_paterno }} {{ ing.persona.apellido_materno or '' }}, {{ ing.persona.nombres }}</td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalEliminar-{{ ing.id_ingeniero }}">
+                            🗑️ Eliminar
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not ingenieros %}
+                <tr>
+                    <td colspan="4" class="text-center text-muted py-4">No hay Ingenieros registrados.</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% for ing in ingenieros %}
+<!-- Modal Eliminar -->
+<div class="modal fade" id="modalEliminar-{{ ing.id_ingeniero }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form action="/ingenieros/eliminar/{{ ing.id_ingeniero }}" method="POST">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-danger">⚠️ Confirmar Eliminación</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-start">
+                    <p>¿Estás seguro de que deseas eliminar permanentemente al ingeniero <strong>{{ ing.persona.nombres }} {{ ing.persona.apellido_paterno }}</strong>?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger">Sí, Eliminar</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Modal Nuevo Ingeniero -->
+<div class="modal fade" id="modalNuevoIngeniero" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <form action="/ingenieros/crear" method="POST">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Registrar Nuevo Ingeniero</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-start">
+                    
+                    <h6 class="text-primary mb-3"><i class="bi bi-tools"></i> Datos del Ingeniero</h6>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="ing_dni" class="form-label">DNI</label>
+                            <input type="text" class="form-control" name="ing_dni" required pattern="[0-9]{8,20}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="ing_cip" class="form-label">N° CIP</label>
+                            <input type="text" class="form-control" name="ing_cip" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="ing_nombres" class="form-label">Nombres</label>
+                            <input type="text" class="form-control" name="ing_nombres" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="ing_ap_paterno" class="form-label">Ap. Paterno</label>
+                            <input type="text" class="form-control" name="ing_ap_paterno" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="ing_ap_materno" class="form-label">Ap. Materno</label>
+                            <input type="text" class="form-control" name="ing_ap_materno">
+                        </div>
+                    </div>
+                    
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Registrar Ingeniero</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

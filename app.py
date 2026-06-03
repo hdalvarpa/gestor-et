@@ -23,6 +23,10 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from models.database import db
 from models.usuario import Usuario
 from models.persona import Persona
+from models.entidad_tecnica import EntidadTecnica
+from models.ingeniero import Ingeniero
+from models.registro_et import RegistroET
+from models.asignacion_ingeniero import AsignacionIngeniero
 
 app = Flask(__name__)
 app.secret_key = 'clave_secreta_ptp_fipi_2025'  # Clave para firmar las sesiones
@@ -299,7 +303,8 @@ def crear_usuario():
     
     nuevo_dni = request.form.get('nuevo_dni')
     nuevo_nombres = request.form.get('nuevo_nombres')
-    nuevo_apellidos = request.form.get('nuevo_apellidos')
+    nuevo_ap_paterno = request.form.get('nuevo_ap_paterno')
+    nuevo_ap_materno = request.form.get('nuevo_ap_materno', '')
     
     if Usuario.query.filter_by(username=nuevo_username).first():
         flash('Error: El nombre de usuario ya existe.', 'danger')
@@ -314,7 +319,8 @@ def crear_usuario():
                 id_tipo_documento=1, # DNI
                 numero_documento=nuevo_dni,
                 nombres=nuevo_nombres.upper(),
-                apellidos=nuevo_apellidos.upper(),
+                apellido_paterno=nuevo_ap_paterno.upper(),
+                apellido_materno=nuevo_ap_materno.upper() if nuevo_ap_materno else '',
                 correo=nuevo_correo
             )
             db.session.add(nueva_persona)
@@ -721,6 +727,311 @@ def crear_pdf_datos(mi_predio, mi_jefe, mi_conyuge, carga_1, carga_2, carga_3, f
     packet.seek(0)
     return packet
 
+
+# ==========================================
+# GESTIÓN DE ENTIDADES TÉCNICAS
+# ==========================================
+
+@app.route('/entidades')
+@login_requerido
+def listar_entidades():
+    entidades = EntidadTecnica.query.all()
+    return render_template('entidades.html', entidades=entidades)
+
+@app.route('/entidades/crear', methods=['POST'])
+@login_requerido
+def crear_entidad():
+    # Datos de la Entidad
+    ruc = request.form.get('ruc')
+    razon_social = request.form.get('razon_social')
+    direccion = request.form.get('direccion')
+    
+    # Datos Representante Legal
+    rep_dni = request.form.get('rep_dni')
+    rep_nombres = request.form.get('rep_nombres')
+    rep_ap_paterno = request.form.get('rep_ap_paterno')
+    rep_ap_materno = request.form.get('rep_ap_materno', '')
+    
+    if EntidadTecnica.query.filter_by(ruc=ruc).first():
+        flash('Error: Ya existe una Entidad Técnica con este RUC.', 'danger')
+        return redirect(url_for('listar_entidades'))
+        
+    try:
+        # 1. Gestionar Representante Legal (Persona)
+        rep_persona = Persona.query.filter_by(numero_documento=rep_dni).first()
+        if not rep_persona:
+            rep_persona = Persona(
+                id_tipo_documento=1, 
+                numero_documento=rep_dni, 
+                nombres=rep_nombres.upper(), 
+                apellido_paterno=rep_ap_paterno.upper(),
+                apellido_materno=rep_ap_materno.upper() if rep_ap_materno else ''
+            )
+            db.session.add(rep_persona)
+            db.session.flush()
+            
+        # 2. Crear Entidad Técnica
+        nueva_et = EntidadTecnica(
+            ruc=ruc,
+            razon_social=razon_social.upper(),
+            direccion=direccion.upper() if direccion else None,
+            id_representante_legal=rep_persona.id_persona
+        )
+        db.session.add(nueva_et)
+        db.session.commit()
+        
+        flash(f'Entidad Técnica {razon_social} registrada exitosamente.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Ocurrió un error al guardar en base de datos: {str(e)}', 'danger')
+        
+    return redirect(url_for('listar_entidades'))
+
+@app.route('/entidades/eliminar/<int:id>', methods=['POST'])
+@login_requerido
+def eliminar_entidad(id):
+    entidad = EntidadTecnica.query.get_or_404(id)
+    try:
+        db.session.delete(entidad)
+        db.session.commit()
+        flash(f'Entidad Técnica {entidad.razon_social} eliminada.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'No se puede eliminar la Entidad. Es posible que tenga Expedientes asociados.', 'danger')
+    return redirect(url_for('listar_entidades'))
+
+
+# ==========================================
+# GESTIÓN DE CÓDIGOS DE REGISTRO (Registros ET)
+# ==========================================
+
+@app.route('/registros_et')
+@login_requerido
+def listar_registros():
+    registros = RegistroET.query.order_by(RegistroET.anio.desc()).all()
+    return render_template('registros_et.html', registros=registros)
+
+@app.route('/registros_et/crear', methods=['POST'])
+@login_requerido
+def crear_registro():
+    codigo_registro = request.form.get('codigo_registro')
+    anio = request.form.get('anio')
+    
+    # Validar que no exista ese mismo código
+    existe = RegistroET.query.filter_by(codigo_registro=codigo_registro).first()
+    if existe:
+        flash(f'El código de registro {codigo_registro} ya existe en el sistema.', 'danger')
+        return redirect(url_for('listar_registros'))
+        
+    try:
+        nuevo_registro = RegistroET(
+            codigo_registro=codigo_registro.upper(),
+            anio=int(anio)
+        )
+        db.session.add(nuevo_registro)
+        db.session.commit()
+        flash(f'Código de Registro {codigo_registro} añadido exitosamente.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al guardar el registro: {str(e)}', 'danger')
+        
+    return redirect(url_for('listar_registros'))
+
+@app.route('/registros_et/eliminar/<int:id>', methods=['POST'])
+@login_requerido
+def eliminar_registro(id):
+    registro = RegistroET.query.get_or_404(id)
+    
+    # Validar si ya está asignado a una entidad
+    if registro.id_entidad_tecnica is not None:
+        flash(f'No se puede eliminar el código {registro.codigo_registro} porque está vinculado a la entidad "{registro.entidad_tecnica.razon_social}". Primero debe desvincularlo en "Asignar Códigos".', 'danger')
+        return redirect(url_for('listar_registros'))
+        
+    try:
+        db.session.delete(registro)
+        db.session.commit()
+        flash(f'Registro {registro.codigo_registro} eliminado correctamente.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash('No se pudo eliminar el registro. Es posible que tenga dependencias.', 'danger')
+    return redirect(url_for('listar_registros'))
+
+# ==========================================
+# GESTIÓN DE ASIGNACIONES DE REGISTROS ET
+# ==========================================
+
+@app.route('/asignacion_registros')
+@login_requerido
+def listar_asignaciones_registros():
+    # Solo mostrar registros que YA están asignados
+    asignaciones = RegistroET.query.filter(RegistroET.id_entidad_tecnica.isnot(None)).order_by(RegistroET.anio.desc()).all()
+    
+    # Entidades que ya tienen un registro asignado (para excluirlas)
+    entidades_con_registro = [reg.id_entidad_tecnica for reg in asignaciones]
+    
+    # Mostrar en el select solo las entidades que NO están en la lista de asignadas
+    if entidades_con_registro:
+        entidades = EntidadTecnica.query.filter(EntidadTecnica.id_entidad_tecnica.notin_(entidades_con_registro)).all()
+    else:
+        entidades = EntidadTecnica.query.all()
+        
+    # Para el desplegable, solo mostrar registros que NO están asignados aún
+    registros_libres = RegistroET.query.filter(RegistroET.id_entidad_tecnica.is_(None)).order_by(RegistroET.anio.desc()).all()
+    return render_template('asignacion_registros.html', asignaciones=asignaciones, entidades=entidades, registros_libres=registros_libres)
+
+@app.route('/asignacion_registros/crear', methods=['POST'])
+@login_requerido
+def crear_asignacion_registro():
+    id_entidad = request.form.get('id_entidad_tecnica')
+    id_registro_et = request.form.get('id_registro_et')
+    
+    registro = RegistroET.query.get_or_404(id_registro_et)
+    
+    # Python-level validation (Doble Capa) para evitar el error crudo de SQL (uk_entidad_anio)
+    existente = RegistroET.query.filter_by(id_entidad_tecnica=id_entidad, anio=registro.anio).first()
+    if existente:
+        flash(f'La entidad seleccionada ya tiene asignado el código {existente.codigo_registro} para el año {registro.anio}. No puede tener dos códigos en el mismo año.', 'danger')
+        return redirect(url_for('listar_asignaciones_registros'))
+        
+    try:
+        # Asignar el registro a la entidad
+        registro.id_entidad_tecnica = id_entidad
+        db.session.commit()
+        flash('Código de Registro asignado exitosamente a la Entidad Técnica.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al asignar código de registro: {str(e)}', 'danger')
+        
+    return redirect(url_for('listar_asignaciones_registros'))
+
+@app.route('/asignacion_registros/eliminar/<int:id>', methods=['POST'])
+@login_requerido
+def eliminar_asignacion_registro(id):
+    registro = RegistroET.query.get_or_404(id)
+    try:
+        # Simplemente quitamos la entidad (desasignamos), NO eliminamos el código de registro
+        registro.id_entidad_tecnica = None
+        db.session.commit()
+        flash('Asignación de Código de Registro removida correctamente. El código ahora está libre.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al desasignar registro: {str(e)}', 'danger')
+        
+    return redirect(url_for('listar_asignaciones_registros'))
+
+# ==========================================
+# GESTIÓN DE ASIGNACIONES DE INGENIEROS
+# ==========================================
+
+@app.route('/asignacion_ingenieros')
+@login_requerido
+def listar_asignaciones():
+    asignaciones = AsignacionIngeniero.query.order_by(AsignacionIngeniero.id_asignacion.desc()).all()
+    entidades = EntidadTecnica.query.all()
+    ingenieros = Ingeniero.query.all()
+    return render_template('asignacion_ingenieros.html', asignaciones=asignaciones, entidades=entidades, ingenieros=ingenieros)
+
+@app.route('/asignacion_ingenieros/crear', methods=['POST'])
+@login_requerido
+def crear_asignacion():
+    id_entidad = request.form.get('id_entidad_tecnica')
+    id_ingeniero = request.form.get('id_ingeniero')
+    
+    try:
+        # Desactivar la asignación anterior
+        asignaciones_antiguas = AsignacionIngeniero.query.filter_by(id_entidad_tecnica=id_entidad, estado='VIGENTE').all()
+        for asig in asignaciones_antiguas:
+            asig.estado = 'ANTERIOR'
+            
+        # Crear la nueva asignación
+        nueva_asignacion = AsignacionIngeniero(
+            id_entidad_tecnica=id_entidad,
+            id_ingeniero=id_ingeniero,
+            estado='VIGENTE'
+        )
+        db.session.add(nueva_asignacion)
+        db.session.commit()
+        flash('Ingeniero asignado exitosamente a la Entidad Técnica.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al asignar ingeniero: {str(e)}', 'danger')
+        
+    return redirect(url_for('listar_asignaciones'))
+
+@app.route('/asignacion_ingenieros/eliminar/<int:id>', methods=['POST'])
+@login_requerido
+def eliminar_asignacion(id):
+    asignacion = AsignacionIngeniero.query.get_or_404(id)
+    try:
+        db.session.delete(asignacion)
+        db.session.commit()
+        flash('Asignación eliminada del historial.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al eliminar asignación: {str(e)}', 'danger')
+        
+    return redirect(url_for('listar_asignaciones'))
+
+# ==========================================
+# GESTIÓN DE INGENIEROS
+# ==========================================
+
+@app.route('/ingenieros')
+@login_requerido
+def listar_ingenieros():
+    ingenieros = Ingeniero.query.all()
+    return render_template('ingenieros.html', ingenieros=ingenieros)
+
+@app.route('/ingenieros/crear', methods=['POST'])
+@login_requerido
+def crear_ingeniero():
+    ing_dni = request.form.get('ing_dni')
+    ing_nombres = request.form.get('ing_nombres')
+    ing_ap_paterno = request.form.get('ing_ap_paterno')
+    ing_ap_materno = request.form.get('ing_ap_materno', '')
+    ing_cip = request.form.get('ing_cip')
+    
+    if Ingeniero.query.filter_by(cip=ing_cip).first():
+        flash('Error: Ya existe un Ingeniero registrado con ese número de CIP.', 'danger')
+        return redirect(url_for('listar_ingenieros'))
+        
+    try:
+        ing_persona = Persona.query.filter_by(numero_documento=ing_dni).first()
+        if not ing_persona:
+            ing_persona = Persona(
+                id_tipo_documento=1, 
+                numero_documento=ing_dni, 
+                nombres=ing_nombres.upper(), 
+                apellido_paterno=ing_ap_paterno.upper(),
+                apellido_materno=ing_ap_materno.upper() if ing_ap_materno else ''
+            )
+            db.session.add(ing_persona)
+            db.session.flush()
+            
+        ingeniero = Ingeniero(id_persona=ing_persona.id_persona, cip=ing_cip)
+        db.session.add(ingeniero)
+        db.session.commit()
+        
+        flash('Ingeniero creado exitosamente.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al guardar en base de datos: {str(e)}', 'danger')
+        
+    return redirect(url_for('listar_ingenieros'))
+
+@app.route('/ingenieros/eliminar/<int:id>', methods=['POST'])
+@login_requerido
+def eliminar_ingeniero(id):
+    ingeniero = Ingeniero.query.get_or_404(id)
+    try:
+        db.session.delete(ingeniero)
+        db.session.commit()
+        flash('Ingeniero eliminado.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'No se puede eliminar el Ingeniero porque tiene datos vinculados (Asignaciones).', 'danger')
+        
+    return redirect(url_for('listar_ingenieros'))
 
 if __name__ == '__main__':
     app.run(debug=True)
