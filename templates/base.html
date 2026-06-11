@@ -249,6 +249,12 @@
             color: #f1f5f9 !important;
         }
 
+        /* Fix for form-text helper text in dark theme */
+        .form-text {
+            color: #94a3b8 !important;
+            font-size: 0.85rem;
+        }
+
         /* Form section dividers */
         h5.text-primary, h6.text-primary {
             color: #8b5cf6 !important;
@@ -529,17 +535,47 @@
                 aria-label="Close"></button>
         </div>
         <div class="offcanvas-body sidebar p-0">
-            <div class="d-flex flex-column pt-3">
+                <div class="d-flex flex-column pt-3">
+                <div class="menu-header">Principal</div>
                 <a href="/dashboard">🏠 Inicio</a>
-                <a href="/formulario">📄 Nuevo Documento</a>
-                <a href="/constatacion">📝 Formato de Constatación</a>
-                <a href="/usuarios">👥 Gestión de Usuarios</a>
+                <a href="/formulario">📝 Nuevo Expediente</a>
+                <a href="/constatacion">📋 Formato Constatación</a>
+                
+                {% if current_user and (current_user.tiene_permiso('GESTIONAR_REGISTROS') or current_user.tiene_permiso('VER_ENTIDADES') or current_user.tiene_permiso('ASIGNAR_REGISTROS')) %}
+                <div class="menu-header">Gestión de Entidades</div>
+                {% if current_user.tiene_permiso('GESTIONAR_REGISTROS') %}
+                <a href="/registros_et">🏷️ Códigos de Registro</a>
+                {% endif %}
+                {% if current_user.tiene_permiso('VER_ENTIDADES') %}
                 <a href="/entidades">🏢 Entidades Técnicas</a>
-                <a href="/ingenieros">👷 Ingenieros</a>
-                <a href="/asignacion_ingenieros">📋 Asignar Ingenieros</a>
-                <a href="/registros_et">📜 Códigos de Registro</a>
-                <a href="/asignacion_registros">🔗 Asignar Códigos de Registro</a>
-                <a href="/plantillas">📂 Plantillas (En construcción)</a>
+                {% endif %}
+                {% if current_user.tiene_permiso('ASIGNAR_REGISTROS') %}
+                <a href="/asignacion_registros">🔗 Asignar Registros a ET</a>
+                {% endif %}
+                {% endif %}
+
+                {% if current_user and (current_user.tiene_permiso('GESTIONAR_INGENIEROS') or current_user.tiene_permiso('ASIGNAR_INGENIEROS')) %}
+                <div class="menu-header">Gestión de Ingenieros</div>
+                {% if current_user.tiene_permiso('GESTIONAR_INGENIEROS') %}
+                <a href="/ingenieros">👷 Padrón de Ingenieros</a>
+                {% endif %}
+                {% if current_user.tiene_permiso('ASIGNAR_INGENIEROS') %}
+                <a href="/asignacion_ingenieros">🧑‍🔧 Asignar Ingenieros a ET</a>
+                {% endif %}
+                {% endif %}
+                
+                {% if current_user and (current_user.tiene_permiso('GESTIONAR_SEGURIDAD') or current_user.tiene_permiso('ASIGNAR_ENTIDADES')) %}
+                <div class="menu-header">Administración del Sistema</div>
+                {% if current_user.tiene_permiso('GESTIONAR_SEGURIDAD') %}
+                <a href="/usuarios">👥 Gestión de Usuarios</a>
+                {% endif %}
+                {% if current_user.tiene_permiso('ASIGNAR_ENTIDADES') %}
+                <a href="/asignacion_usuarios">🏢 Asignar Entidades a Usuarios</a>
+                {% endif %}
+                {% if current_user.tiene_permiso('GESTIONAR_SEGURIDAD') %}
+                <a href="/roles">🔐 Roles y Permisos</a>
+                {% endif %}
+                {% endif %}
             </div>
         </div>
     </div>
@@ -549,16 +585,46 @@
 
             <div class="col-md-2 sidebar p-0 d-none d-md-block">
                 <div class="d-flex flex-column pt-3">
+                    <div class="menu-header">Principal</div>
                     <a href="/dashboard">🏠 Inicio</a>
-                    <a href="/formulario">📄 Nuevo Documento</a>
-                    <a href="/constatacion">📝 Formato de Constatación</a>
-                    <a href="/usuarios">👥 Gestión de Usuarios</a>
+                    <a href="/formulario">📝 Nuevo Expediente</a>
+                    <a href="/constatacion">📋 Formato Constatación</a>
+                    
+                    {% if current_user and (current_user.tiene_permiso('GESTIONAR_REGISTROS') or current_user.tiene_permiso('VER_ENTIDADES') or current_user.tiene_permiso('ASIGNAR_REGISTROS')) %}
+                    <div class="menu-header">Gestión de Entidades</div>
+                    {% if current_user.tiene_permiso('GESTIONAR_REGISTROS') %}
+                    <a href="/registros_et">🏷️ Códigos de Registro</a>
+                    {% endif %}
+                    {% if current_user.tiene_permiso('VER_ENTIDADES') %}
                     <a href="/entidades">🏢 Entidades Técnicas</a>
-                    <a href="/ingenieros">👷 Ingenieros</a>
-                    <a href="/asignacion_ingenieros">📋 Asignar Ingenieros</a>
-                    <a href="/registros_et">📜 Códigos de Registro</a>
-                    <a href="/asignacion_registros">🔗 Asignar Códigos de Registro</a>
-                    <a href="/plantillas">📂 Plantillas (En construcción)</a>
+                    {% endif %}
+                    {% if current_user.tiene_permiso('ASIGNAR_REGISTROS') %}
+                    <a href="/asignacion_registros">🔗 Asignar Registros a ET</a>
+                    {% endif %}
+                    {% endif %}
+    
+                    {% if current_user and (current_user.tiene_permiso('GESTIONAR_INGENIEROS') or current_user.tiene_permiso('ASIGNAR_INGENIEROS')) %}
+                    <div class="menu-header">Gestión de Ingenieros</div>
+                    {% if current_user.tiene_permiso('GESTIONAR_INGENIEROS') %}
+                    <a href="/ingenieros">👷 Padrón de Ingenieros</a>
+                    {% endif %}
+                    {% if current_user.tiene_permiso('ASIGNAR_INGENIEROS') %}
+                    <a href="/asignacion_ingenieros">🧑‍🔧 Asignar Ingenieros a ET</a>
+                    {% endif %}
+                    {% endif %}
+                    
+                    {% if current_user and (current_user.tiene_permiso('GESTIONAR_SEGURIDAD') or current_user.tiene_permiso('ASIGNAR_ENTIDADES')) %}
+                    <div class="menu-header">Administración del Sistema</div>
+                    {% if current_user.tiene_permiso('GESTIONAR_SEGURIDAD') %}
+                    <a href="/usuarios">👥 Gestión de Usuarios</a>
+                    {% endif %}
+                    {% if current_user.tiene_permiso('ASIGNAR_ENTIDADES') %}
+                    <a href="/asignacion_usuarios">🏢 Asignar Entidades a Usuarios</a>
+                    {% endif %}
+                    {% if current_user.tiene_permiso('GESTIONAR_SEGURIDAD') %}
+                    <a href="/roles">🔐 Roles y Permisos</a>
+                    {% endif %}
+                    {% endif %}
                 </div>
             </div>
 
@@ -570,6 +636,64 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Prevenir doble envío de formularios
+        document.querySelectorAll('form').forEach(form => {
+            form.addEventListener('submit', function(e) {
+                const btn = this.querySelector('button[type="submit"]');
+                if (btn) {
+                    // Prevenir múltiples clics
+                    if (this.dataset.submitted === 'true') {
+                        e.preventDefault();
+                    } else {
+                        this.dataset.submitted = 'true';
+                        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Procesando...';
+                        btn.classList.add('disabled');
+                    }
+                }
+            });
+        });
+
+        // Autocompletado de Persona por DNI
+        document.querySelectorAll('input[name$="_dni"]').forEach(dniInput => {
+            dniInput.addEventListener('input', function() {
+                const dni = this.value.trim();
+                const prefix = this.name.split('_dni')[0]; // ej: 'nuevo', 'rep', 'ing'
+                const form = this.closest('form');
+                
+                const nombresInput = form.querySelector(`input[name="${prefix}_nombres"]`);
+                const paternoInput = form.querySelector(`input[name="${prefix}_ap_paterno"]`);
+                const maternoInput = form.querySelector(`input[name="${prefix}_ap_materno"]`);
+                const correoInput = form.querySelector(`input[name="${prefix}_correo"]`);
+                
+                if (dni.length === 8) {
+                    fetch(`/api/persona/${dni}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.encontrado) {
+                                // Rellenar y bloquear
+                                if(nombresInput) { nombresInput.value = data.nombres; nombresInput.readOnly = true; nombresInput.classList.add('bg-light'); }
+                                if(paternoInput) { paternoInput.value = data.apellido_paterno; paternoInput.readOnly = true; paternoInput.classList.add('bg-light'); }
+                                if(maternoInput) { maternoInput.value = data.apellido_materno; maternoInput.readOnly = true; maternoInput.classList.add('bg-light'); }
+                                if(correoInput && data.correo) { correoInput.value = data.correo; correoInput.readOnly = true; correoInput.classList.add('bg-light'); }
+                            } else {
+                                // Desbloquear y limpiar si no se encuentra
+                                if(nombresInput) { nombresInput.readOnly = false; nombresInput.classList.remove('bg-light'); }
+                                if(paternoInput) { paternoInput.readOnly = false; paternoInput.classList.remove('bg-light'); }
+                                if(maternoInput) { maternoInput.readOnly = false; maternoInput.classList.remove('bg-light'); }
+                                if(correoInput) { correoInput.readOnly = false; correoInput.classList.remove('bg-light'); }
+                            }
+                        });
+                } else if (dni.length < 8) {
+                    // Desbloquear si borran el DNI
+                    if(nombresInput) { nombresInput.readOnly = false; nombresInput.classList.remove('bg-light'); }
+                    if(paternoInput) { paternoInput.readOnly = false; paternoInput.classList.remove('bg-light'); }
+                    if(maternoInput) { maternoInput.readOnly = false; maternoInput.classList.remove('bg-light'); }
+                    if(correoInput) { correoInput.readOnly = false; correoInput.classList.remove('bg-light'); }
+                }
+            });
+        });
+    </script>
 </body>
 
 </html>

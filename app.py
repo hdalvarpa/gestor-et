@@ -23,10 +23,11 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from models.database import db
 from models.usuario import Usuario
 from models.persona import Persona
+from models.rol import Rol
+from models.permiso import Permiso
 from models.entidad_tecnica import EntidadTecnica
 from models.ingeniero import Ingeniero
 from models.registro_et import RegistroET
-from models.asignacion_ingeniero import AsignacionIngeniero
 
 app = Flask(__name__)
 app.secret_key = 'clave_secreta_ptp_fipi_2025'  # Clave para firmar las sesiones
@@ -45,6 +46,10 @@ if url_bd and url_bd.startswith("postgres://"):
 # Fallback para desarrollo local (por ejemplo, base de datos SQLite u otra URL)
 app.config['SQLALCHEMY_DATABASE_URI'] = url_bd or 'sqlite:///local.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_pre_ping': True,
+    'pool_recycle': 300,
+}
 db.init_app(app)
 
 
@@ -60,6 +65,38 @@ def login_requerido(f):
             return redirect(url_for('mostrar_login'))
         return f(*args, **kwargs)
     return decorated_function
+
+def get_current_user():
+    if 'usuario' in session:
+        return Usuario.query.filter_by(username=session['usuario']).first()
+    return None
+
+def get_entidades_permitidas():
+    user = get_current_user()
+    if not user:
+        return []
+    if user.rol.nombre == 'SuperAdmin':
+        return EntidadTecnica.query.all()
+    else:
+        return user.entidades
+
+def permiso_requerido(nombre_permiso):
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if 'usuario' not in session:
+                return redirect(url_for('mostrar_login'))
+            user = get_current_user()
+            if not user or not user.tiene_permiso(nombre_permiso):
+                flash(f'Acceso denegado: Se requiere el permiso {nombre_permiso}.', 'danger')
+                return redirect(url_for('dashboard'))
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
+@app.context_processor
+def inject_user():
+    return dict(current_user=get_current_user())
 
 @app.route('/') 
 def mostrar_login():
@@ -289,13 +326,14 @@ def logout():
 # ==========================================
 
 @app.route('/usuarios')
-@login_requerido
+@permiso_requerido('GESTIONAR_SEGURIDAD')
 def listar_usuarios():
     usuarios = Usuario.query.all()
-    return render_template('usuarios.html', usuarios=usuarios)
+    roles = Rol.query.all()
+    return render_template('usuarios.html', usuarios=usuarios, roles=roles)
 
 @app.route('/usuarios/crear', methods=['POST'])
-@login_requerido
+@permiso_requerido('GESTIONAR_SEGURIDAD')
 def crear_usuario():
     nuevo_username = request.form.get('nuevo_usuario')
     nuevo_correo = request.form.get('nuevo_correo')
@@ -310,21 +348,29 @@ def crear_usuario():
         flash('Error: El nombre de usuario ya existe.', 'danger')
     elif Usuario.query.filter_by(correo_electronico=nuevo_correo).first():
         flash('Error: El correo electrónico ya está registrado.', 'danger')
-    elif Persona.query.filter_by(numero_documento=nuevo_dni).first():
-        flash('Error: El DNI (número de documento) ya está registrado en el sistema.', 'danger')
     else:
         try:
-            # 1. Crear Persona primero
-            nueva_persona = Persona(
-                id_tipo_documento=1, # DNI
-                numero_documento=nuevo_dni,
-                nombres=nuevo_nombres.upper(),
-                apellido_paterno=nuevo_ap_paterno.upper(),
-                apellido_materno=nuevo_ap_materno.upper() if nuevo_ap_materno else '',
-                correo=nuevo_correo
-            )
-            db.session.add(nueva_persona)
-            db.session.flush() # Flush para obtener el id_persona que asigna la BD
+            # 1. Verificar si la Persona ya existe
+            persona_existente = Persona.query.filter_by(numero_documento=nuevo_dni).first()
+            
+            if persona_existente:
+                # Si la persona existe, verificar que no tenga ya un usuario
+                if Usuario.query.filter_by(id_persona=persona_existente.id_persona).first():
+                    flash('Error: Esta persona (DNI) ya tiene una cuenta de usuario asignada.', 'danger')
+                    return redirect(url_for('listar_usuarios'))
+                nueva_persona = persona_existente
+            else:
+                # 1. Crear Persona nueva si no existe
+                nueva_persona = Persona(
+                    id_tipo_documento=1, # DNI
+                    numero_documento=nuevo_dni,
+                    nombres=nuevo_nombres.upper(),
+                    apellido_paterno=nuevo_ap_paterno.upper(),
+                    apellido_materno=nuevo_ap_materno.upper() if nuevo_ap_materno else '',
+                    correo=nuevo_correo
+                )
+                db.session.add(nueva_persona)
+                db.session.flush() # Flush para obtener el id_persona que asigna la BD
             
             # 2. Crear Usuario
             hashed_pw = generate_password_hash(nueva_clave)
@@ -332,7 +378,8 @@ def crear_usuario():
                 username=nuevo_username, 
                 correo_electronico=nuevo_correo, 
                 password_hash=hashed_pw,
-                id_persona=nueva_persona.id_persona
+                id_persona=nueva_persona.id_persona,
+                id_rol=(Rol.query.filter_by(nombre='Usuario Básico').first().id_rol if Rol.query.filter_by(nombre='Usuario Básico').first() else 1)
             )
             db.session.add(nuevo_user)
             db.session.commit()
@@ -345,7 +392,7 @@ def crear_usuario():
     return redirect(url_for('listar_usuarios'))
 
 @app.route('/usuarios/cambiar_clave/<int:id>', methods=['POST'])
-@login_requerido
+@permiso_requerido('GESTIONAR_SEGURIDAD')
 def cambiar_clave(id):
     usuario = Usuario.query.get_or_404(id)
     nueva_clave = request.form.get('nueva_clave')
@@ -357,7 +404,7 @@ def cambiar_clave(id):
     return redirect(url_for('listar_usuarios'))
 
 @app.route('/usuarios/eliminar/<int:id>', methods=['POST'])
-@login_requerido
+@permiso_requerido('GESTIONAR_SEGURIDAD')
 def eliminar_usuario(id):
     usuario = Usuario.query.get_or_404(id)
     
@@ -370,17 +417,31 @@ def eliminar_usuario(id):
         
     return redirect(url_for('listar_usuarios'))
 
+@app.route('/usuarios/cambiar_rol/<int:id>', methods=['POST'])
+@permiso_requerido('GESTIONAR_SEGURIDAD')
+def cambiar_rol(id):
+    usuario = Usuario.query.get_or_404(id)
+    id_rol = request.form.get('id_rol')
+    
+    if usuario.username == 'admin1' and str(id_rol) != str(Rol.query.filter_by(nombre='SuperAdmin').first().id_rol):
+        flash('No puedes quitarle el rol de SuperAdmin al usuario principal admin1.', 'danger')
+        return redirect(url_for('listar_usuarios'))
+        
+    try:
+        nuevo_rol = Rol.query.get(id_rol)
+        if nuevo_rol:
+            usuario.id_rol = nuevo_rol.id_rol
+            db.session.commit()
+            flash(f'Rol actualizado para el usuario {usuario.username}.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al cambiar el rol: {str(e)}', 'danger')
+        
+    return redirect(url_for('listar_usuarios'))
+
 # 4. RUTA GENERAR PDF (La lógica pesada)
 @app.route('/generar', methods=['POST'])
 def generar_pdf():
-
-# --- AGREGA ESTO AQUÍ ---
-    #print("\n" + "="*30)
-    #print("--- DATOS RECIBIDOS DEL FORMULARIO ---")
-    #print(request.form)  # <--- ESTO ES EL CHISMOSO
-    #print("="*30 + "\n")
-    # ------------------------
-
 
     if not os.path.exists(NOMBRE_PLANTILLA):
         return "Error: No encuentro la plantilla (asegúrate que el nombre coincida).", 404
@@ -733,24 +794,24 @@ def crear_pdf_datos(mi_predio, mi_jefe, mi_conyuge, carga_1, carga_2, carga_3, f
 # ==========================================
 
 @app.route('/entidades')
-@login_requerido
+@permiso_requerido('VER_ENTIDADES')
 def listar_entidades():
-    entidades = EntidadTecnica.query.all()
+    entidades = get_entidades_permitidas()
     return render_template('entidades.html', entidades=entidades)
 
 @app.route('/entidades/crear', methods=['POST'])
-@login_requerido
+@permiso_requerido('CREAR_ENTIDADES')
 def crear_entidad():
     # Datos de la Entidad
-    ruc = request.form.get('ruc')
-    razon_social = request.form.get('razon_social')
-    direccion = request.form.get('direccion')
+    ruc = request.form.get('ruc', '').strip()
+    razon_social = request.form.get('razon_social', '').strip()
+    direccion = request.form.get('direccion', '').strip()
     
     # Datos Representante Legal
-    rep_dni = request.form.get('rep_dni')
-    rep_nombres = request.form.get('rep_nombres')
-    rep_ap_paterno = request.form.get('rep_ap_paterno')
-    rep_ap_materno = request.form.get('rep_ap_materno', '')
+    rep_dni = request.form.get('rep_dni', '').strip()
+    rep_nombres = request.form.get('rep_nombres', '').strip()
+    rep_ap_paterno = request.form.get('rep_ap_paterno', '').strip()
+    rep_ap_materno = request.form.get('rep_ap_materno', '').strip()
     
     if EntidadTecnica.query.filter_by(ruc=ruc).first():
         flash('Error: Ya existe una Entidad Técnica con este RUC.', 'danger')
@@ -788,7 +849,7 @@ def crear_entidad():
     return redirect(url_for('listar_entidades'))
 
 @app.route('/entidades/eliminar/<int:id>', methods=['POST'])
-@login_requerido
+@permiso_requerido('CREAR_ENTIDADES')
 def eliminar_entidad(id):
     entidad = EntidadTecnica.query.get_or_404(id)
     try:
@@ -806,13 +867,13 @@ def eliminar_entidad(id):
 # ==========================================
 
 @app.route('/registros_et')
-@login_requerido
+@permiso_requerido('GESTIONAR_REGISTROS')
 def listar_registros():
     registros = RegistroET.query.order_by(RegistroET.anio.desc()).all()
     return render_template('registros_et.html', registros=registros)
 
 @app.route('/registros_et/crear', methods=['POST'])
-@login_requerido
+@permiso_requerido('GESTIONAR_REGISTROS')
 def crear_registro():
     codigo_registro = request.form.get('codigo_registro')
     anio = request.form.get('anio')
@@ -838,7 +899,7 @@ def crear_registro():
     return redirect(url_for('listar_registros'))
 
 @app.route('/registros_et/eliminar/<int:id>', methods=['POST'])
-@login_requerido
+@permiso_requerido('GESTIONAR_REGISTROS')
 def eliminar_registro(id):
     registro = RegistroET.query.get_or_404(id)
     
@@ -861,7 +922,7 @@ def eliminar_registro(id):
 # ==========================================
 
 @app.route('/asignacion_registros')
-@login_requerido
+@permiso_requerido('ASIGNAR_REGISTROS')
 def listar_asignaciones_registros():
     # Solo mostrar registros que YA están asignados
     asignaciones = RegistroET.query.filter(RegistroET.id_entidad_tecnica.isnot(None)).order_by(RegistroET.anio.desc()).all()
@@ -869,18 +930,16 @@ def listar_asignaciones_registros():
     # Entidades que ya tienen un registro asignado (para excluirlas)
     entidades_con_registro = [reg.id_entidad_tecnica for reg in asignaciones]
     
-    # Mostrar en el select solo las entidades que NO están en la lista de asignadas
-    if entidades_con_registro:
-        entidades = EntidadTecnica.query.filter(EntidadTecnica.id_entidad_tecnica.notin_(entidades_con_registro)).all()
-    else:
-        entidades = EntidadTecnica.query.all()
+    # Mostrar en el select solo las entidades permitidas que NO estén en la lista de asignadas
+    entidades_permitidas = get_entidades_permitidas()
+    entidades = [e for e in entidades_permitidas if e.id_entidad_tecnica not in entidades_con_registro]
         
     # Para el desplegable, solo mostrar registros que NO están asignados aún
     registros_libres = RegistroET.query.filter(RegistroET.id_entidad_tecnica.is_(None)).order_by(RegistroET.anio.desc()).all()
     return render_template('asignacion_registros.html', asignaciones=asignaciones, entidades=entidades, registros_libres=registros_libres)
 
 @app.route('/asignacion_registros/crear', methods=['POST'])
-@login_requerido
+@permiso_requerido('ASIGNAR_REGISTROS')
 def crear_asignacion_registro():
     id_entidad = request.form.get('id_entidad_tecnica')
     id_registro_et = request.form.get('id_registro_et')
@@ -905,7 +964,7 @@ def crear_asignacion_registro():
     return redirect(url_for('listar_asignaciones_registros'))
 
 @app.route('/asignacion_registros/eliminar/<int:id>', methods=['POST'])
-@login_requerido
+@permiso_requerido('ASIGNAR_REGISTROS')
 def eliminar_asignacion_registro(id):
     registro = RegistroET.query.get_or_404(id)
     try:
@@ -920,36 +979,26 @@ def eliminar_asignacion_registro(id):
     return redirect(url_for('listar_asignaciones_registros'))
 
 # ==========================================
-# GESTIÓN DE ASIGNACIONES DE INGENIEROS
+# ASIGNACIÓN DE INGENIEROS A ET
 # ==========================================
 
 @app.route('/asignacion_ingenieros')
-@login_requerido
+@permiso_requerido('ASIGNAR_INGENIEROS')
 def listar_asignaciones():
-    asignaciones = AsignacionIngeniero.query.order_by(AsignacionIngeniero.id_asignacion.desc()).all()
-    entidades = EntidadTecnica.query.all()
+    # Solo mostramos las asignaciones de las entidades permitidas
+    entidades_permitidas = get_entidades_permitidas()
     ingenieros = Ingeniero.query.all()
-    return render_template('asignacion_ingenieros.html', asignaciones=asignaciones, entidades=entidades, ingenieros=ingenieros)
+    return render_template('asignacion_ingenieros.html', entidades=entidades_permitidas, ingenieros=ingenieros)
 
 @app.route('/asignacion_ingenieros/crear', methods=['POST'])
-@login_requerido
+@permiso_requerido('ASIGNAR_INGENIEROS')
 def crear_asignacion():
     id_entidad = request.form.get('id_entidad_tecnica')
     id_ingeniero = request.form.get('id_ingeniero')
     
     try:
-        # Desactivar la asignación anterior
-        asignaciones_antiguas = AsignacionIngeniero.query.filter_by(id_entidad_tecnica=id_entidad, estado='VIGENTE').all()
-        for asig in asignaciones_antiguas:
-            asig.estado = 'ANTERIOR'
-            
-        # Crear la nueva asignación
-        nueva_asignacion = AsignacionIngeniero(
-            id_entidad_tecnica=id_entidad,
-            id_ingeniero=id_ingeniero,
-            estado='VIGENTE'
-        )
-        db.session.add(nueva_asignacion)
+        entidad = EntidadTecnica.query.get_or_404(id_entidad)
+        entidad.id_ingeniero_vigente = id_ingeniero
         db.session.commit()
         flash('Ingeniero asignado exitosamente a la Entidad Técnica.', 'success')
     except Exception as e:
@@ -959,16 +1008,16 @@ def crear_asignacion():
     return redirect(url_for('listar_asignaciones'))
 
 @app.route('/asignacion_ingenieros/eliminar/<int:id>', methods=['POST'])
-@login_requerido
+@permiso_requerido('ASIGNAR_INGENIEROS')
 def eliminar_asignacion(id):
-    asignacion = AsignacionIngeniero.query.get_or_404(id)
+    entidad = EntidadTecnica.query.get_or_404(id)
     try:
-        db.session.delete(asignacion)
+        entidad.id_ingeniero_vigente = None
         db.session.commit()
-        flash('Asignación eliminada del historial.', 'success')
+        flash('Ingeniero desvinculado de la Entidad Técnica.', 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f'Error al eliminar asignación: {str(e)}', 'danger')
+        flash(f'Error al desvincular ingeniero: {str(e)}', 'danger')
         
     return redirect(url_for('listar_asignaciones'))
 
@@ -977,13 +1026,13 @@ def eliminar_asignacion(id):
 # ==========================================
 
 @app.route('/ingenieros')
-@login_requerido
+@permiso_requerido('GESTIONAR_INGENIEROS')
 def listar_ingenieros():
     ingenieros = Ingeniero.query.all()
     return render_template('ingenieros.html', ingenieros=ingenieros)
 
 @app.route('/ingenieros/crear', methods=['POST'])
-@login_requerido
+@permiso_requerido('GESTIONAR_INGENIEROS')
 def crear_ingeniero():
     ing_dni = request.form.get('ing_dni')
     ing_nombres = request.form.get('ing_nombres')
@@ -1020,7 +1069,7 @@ def crear_ingeniero():
     return redirect(url_for('listar_ingenieros'))
 
 @app.route('/ingenieros/eliminar/<int:id>', methods=['POST'])
-@login_requerido
+@permiso_requerido('GESTIONAR_INGENIEROS')
 def eliminar_ingeniero(id):
     ingeniero = Ingeniero.query.get_or_404(id)
     try:
@@ -1032,6 +1081,140 @@ def eliminar_ingeniero(id):
         flash(f'No se puede eliminar el Ingeniero porque tiene datos vinculados (Asignaciones).', 'danger')
         
     return redirect(url_for('listar_ingenieros'))
+
+# ==========================================
+# GESTIÓN DE ASIGNACIONES DE USUARIOS-ENTIDADES
+# ==========================================
+
+@app.route('/asignacion_usuarios')
+@permiso_requerido('ASIGNAR_ENTIDADES')
+def listar_asignaciones_usuarios():
+    # Obtener todos los usuarios que no son super administradores del sistema (opcional)
+    usuarios = Usuario.query.all()
+    entidades = EntidadTecnica.query.all()
+    
+    # Para la tabla, enviamos la lista de usuarios y en el HTML iteramos sus entidades
+    return render_template('asignacion_usuarios.html', usuarios=usuarios, entidades=entidades)
+
+@app.route('/asignacion_usuarios/crear', methods=['POST'])
+@permiso_requerido('ASIGNAR_ENTIDADES')
+def crear_asignacion_usuario():
+    id_usuario = request.form.get('id_usuario')
+    id_entidad = request.form.get('id_entidad_tecnica')
+    
+    usuario = Usuario.query.get_or_404(id_usuario)
+    entidad = EntidadTecnica.query.get_or_404(id_entidad)
+    
+    if entidad in usuario.entidades:
+        flash(f'El usuario {usuario.username} ya tiene asignada la entidad {entidad.razon_social}.', 'warning')
+        return redirect(url_for('listar_asignaciones_usuarios'))
+        
+    try:
+        usuario.entidades.append(entidad)
+        db.session.commit()
+        flash(f'Entidad {entidad.razon_social} asignada a {usuario.username} con éxito.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al asignar entidad al usuario: {str(e)}', 'danger')
+        
+    return redirect(url_for('listar_asignaciones_usuarios'))
+
+@app.route('/asignacion_usuarios/eliminar/<int:id_usuario>/<int:id_entidad>', methods=['POST'])
+@permiso_requerido('ASIGNAR_ENTIDADES')
+def eliminar_asignacion_usuario(id_usuario, id_entidad):
+    usuario = Usuario.query.get_or_404(id_usuario)
+    entidad = EntidadTecnica.query.get_or_404(id_entidad)
+    
+    if entidad in usuario.entidades:
+        try:
+            usuario.entidades.remove(entidad)
+            db.session.commit()
+            flash(f'Entidad {entidad.razon_social} retirada del usuario {usuario.username}.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al eliminar la asignación: {str(e)}', 'danger')
+    
+    return redirect(url_for('listar_asignaciones_usuarios'))
+
+# ==========================================
+# GESTIÓN DE ROLES Y PERMISOS
+# ==========================================
+
+@app.route('/roles')
+@permiso_requerido('GESTIONAR_SEGURIDAD')
+def listar_roles():
+    roles = Rol.query.all()
+    permisos = Permiso.query.order_by(Permiso.nombre).all()
+    return render_template('roles.html', roles=roles, permisos=permisos)
+
+@app.route('/roles/crear', methods=['POST'])
+@permiso_requerido('GESTIONAR_SEGURIDAD')
+def crear_rol():
+    nombre = request.form.get('nombre')
+    permisos_ids = request.form.getlist('permisos') # Lista de IDs de permisos seleccionados
+    
+    if Rol.query.filter_by(nombre=nombre).first():
+        flash(f'El rol {nombre} ya existe.', 'danger')
+        return redirect(url_for('listar_roles'))
+        
+    try:
+        nuevo_rol = Rol(nombre=nombre)
+        # Asignar permisos seleccionados
+        for p_id in permisos_ids:
+            permiso = Permiso.query.get(p_id)
+            if permiso:
+                nuevo_rol.permisos.append(permiso)
+                
+        db.session.add(nuevo_rol)
+        db.session.commit()
+        flash(f'Rol {nombre} creado exitosamente.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al crear rol: {str(e)}', 'danger')
+        
+    return redirect(url_for('listar_roles'))
+
+@app.route('/roles/editar/<int:id>', methods=['POST'])
+@permiso_requerido('GESTIONAR_SEGURIDAD')
+def editar_rol(id):
+    rol = Rol.query.get_or_404(id)
+    
+    if rol.nombre == 'SuperAdmin':
+        flash('No se pueden modificar los permisos del rol SuperAdmin por seguridad.', 'danger')
+        return redirect(url_for('listar_roles'))
+        
+    permisos_ids = request.form.getlist('permisos')
+    
+    try:
+        # Limpiar permisos actuales y asignar los nuevos
+        rol.permisos = []
+        for p_id in permisos_ids:
+            permiso = Permiso.query.get(p_id)
+            if permiso:
+                rol.permisos.append(permiso)
+                
+        db.session.commit()
+        flash(f'Permisos actualizados para el rol {rol.nombre}.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al actualizar permisos: {str(e)}', 'danger')
+        
+    return redirect(url_for('listar_roles'))
+
+from flask import jsonify
+
+@app.route('/api/persona/<dni>')
+def api_buscar_persona(dni):
+    persona = Persona.query.filter_by(numero_documento=dni).first()
+    if persona:
+        return jsonify({
+            'encontrado': True,
+            'nombres': persona.nombres,
+            'apellido_paterno': persona.apellido_paterno,
+            'apellido_materno': persona.apellido_materno,
+            'correo': persona.correo
+        })
+    return jsonify({'encontrado': False})
 
 if __name__ == '__main__':
     app.run(debug=True)

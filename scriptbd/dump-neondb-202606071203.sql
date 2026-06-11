@@ -2,10 +2,10 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 17.10 (6a49db4)
+-- Dumped from database version 17.10 (8e4c665)
 -- Dumped by pg_dump version 17.0
 
--- Started on 2026-06-03 00:38:31
+-- Started on 2026-06-07 12:03:42
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -19,9 +19,69 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
+--
+-- TOC entry 247 (class 1255 OID 81922)
+-- Name: trg_prevent_delete_assigned_registro(); Type: FUNCTION; Schema: public; Owner: neondb_owner
+--
+
+CREATE FUNCTION public.trg_prevent_delete_assigned_registro() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    IF OLD.id_entidad_tecnica IS NOT NULL THEN
+        RAISE EXCEPTION 'No se puede eliminar el código % del año % porque está asignado a una entidad.', OLD.codigo_registro, OLD.anio;
+    END IF;
+    RETURN OLD;
+END;
+$$;
+
+
+ALTER FUNCTION public.trg_prevent_delete_assigned_registro() OWNER TO neondb_owner;
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
+
+--
+-- TOC entry 234 (class 1259 OID 73729)
+-- Name: asignacion_ingenieros; Type: TABLE; Schema: public; Owner: neondb_owner
+--
+
+CREATE TABLE public.asignacion_ingenieros (
+    id_asignacion integer NOT NULL,
+    id_entidad_tecnica integer NOT NULL,
+    id_ingeniero integer NOT NULL,
+    estado character varying(20) DEFAULT 'VIGENTE'::character varying,
+    fecha_asignacion timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+ALTER TABLE public.asignacion_ingenieros OWNER TO neondb_owner;
+
+--
+-- TOC entry 233 (class 1259 OID 73728)
+-- Name: asignacion_ingenieros_id_asignacion_seq; Type: SEQUENCE; Schema: public; Owner: neondb_owner
+--
+
+CREATE SEQUENCE public.asignacion_ingenieros_id_asignacion_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.asignacion_ingenieros_id_asignacion_seq OWNER TO neondb_owner;
+
+--
+-- TOC entry 3494 (class 0 OID 0)
+-- Dependencies: 233
+-- Name: asignacion_ingenieros_id_asignacion_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
+--
+
+ALTER SEQUENCE public.asignacion_ingenieros_id_asignacion_seq OWNED BY public.asignacion_ingenieros.id_asignacion;
+
 
 --
 -- TOC entry 226 (class 1259 OID 57403)
@@ -33,8 +93,7 @@ CREATE TABLE public.entidades_tecnicas (
     ruc character(11) NOT NULL,
     razon_social character varying(150) NOT NULL,
     direccion character varying(255),
-    id_representante_legal integer NOT NULL,
-    id_ingeniero_actual integer NOT NULL
+    id_representante_legal integer NOT NULL
 );
 
 
@@ -57,7 +116,7 @@ CREATE SEQUENCE public.entidades_tecnicas_id_entidad_tecnica_seq
 ALTER SEQUENCE public.entidades_tecnicas_id_entidad_tecnica_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3465 (class 0 OID 0)
+-- TOC entry 3495 (class 0 OID 0)
 -- Dependencies: 225
 -- Name: entidades_tecnicas_id_entidad_tecnica_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -108,7 +167,7 @@ CREATE SEQUENCE public.expedientes_id_expediente_seq
 ALTER SEQUENCE public.expedientes_id_expediente_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3466 (class 0 OID 0)
+-- TOC entry 3496 (class 0 OID 0)
 -- Dependencies: 227
 -- Name: expedientes_id_expediente_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -155,7 +214,7 @@ CREATE SEQUENCE public.grupo_familiar_id_grupo_familiar_seq
 ALTER SEQUENCE public.grupo_familiar_id_grupo_familiar_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3467 (class 0 OID 0)
+-- TOC entry 3497 (class 0 OID 0)
 -- Dependencies: 229
 -- Name: grupo_familiar_id_grupo_familiar_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -194,7 +253,7 @@ CREATE SEQUENCE public.ingenieros_id_ingeniero_seq
 ALTER SEQUENCE public.ingenieros_id_ingeniero_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3468 (class 0 OID 0)
+-- TOC entry 3498 (class 0 OID 0)
 -- Dependencies: 223
 -- Name: ingenieros_id_ingeniero_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -212,11 +271,12 @@ CREATE TABLE public.personas (
     id_tipo_documento integer NOT NULL,
     numero_documento character varying(20) NOT NULL,
     nombres character varying(100) NOT NULL,
-    apellidos character varying(100) NOT NULL,
     fecha_nacimiento date,
     telefono character varying(20),
     correo character varying(150),
-    direccion_domicilio character varying(255)
+    direccion_domicilio character varying(255),
+    apellido_paterno character varying(100),
+    apellido_materno character varying(100)
 );
 
 
@@ -239,7 +299,7 @@ CREATE SEQUENCE public.personas_id_persona_seq
 ALTER SEQUENCE public.personas_id_persona_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3469 (class 0 OID 0)
+-- TOC entry 3499 (class 0 OID 0)
 -- Dependencies: 219
 -- Name: personas_id_persona_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -254,7 +314,7 @@ ALTER SEQUENCE public.personas_id_persona_seq OWNED BY public.personas.id_person
 
 CREATE TABLE public.registros_et (
     id_registro_et integer NOT NULL,
-    id_entidad_tecnica integer NOT NULL,
+    id_entidad_tecnica integer,
     codigo_registro character varying(50) NOT NULL,
     anio integer NOT NULL
 );
@@ -279,7 +339,7 @@ CREATE SEQUENCE public.registros_et_id_registro_et_seq
 ALTER SEQUENCE public.registros_et_id_registro_et_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3470 (class 0 OID 0)
+-- TOC entry 3500 (class 0 OID 0)
 -- Dependencies: 231
 -- Name: registros_et_id_registro_et_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -317,7 +377,7 @@ CREATE SEQUENCE public.tipos_documento_id_tipo_documento_seq
 ALTER SEQUENCE public.tipos_documento_id_tipo_documento_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3471 (class 0 OID 0)
+-- TOC entry 3501 (class 0 OID 0)
 -- Dependencies: 217
 -- Name: tipos_documento_id_tipo_documento_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -335,11 +395,27 @@ CREATE TABLE public.usuarios (
     id_persona integer NOT NULL,
     username character varying(50) NOT NULL,
     correo_electronico character varying(150) NOT NULL,
-    contrasena_hash character varying(255) NOT NULL
+    contrasena_hash character varying(255) NOT NULL,
+    rol character varying(20) DEFAULT 'USER'::character varying NOT NULL,
+    estado character varying(20) DEFAULT 'ACTIVO'::character varying NOT NULL
 );
 
 
 ALTER TABLE public.usuarios OWNER TO neondb_owner;
+
+--
+-- TOC entry 235 (class 1259 OID 90112)
+-- Name: usuarios_entidades; Type: TABLE; Schema: public; Owner: neondb_owner
+--
+
+CREATE TABLE public.usuarios_entidades (
+    id_usuario integer NOT NULL,
+    id_entidad_tecnica integer NOT NULL,
+    fecha_asignacion timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+ALTER TABLE public.usuarios_entidades OWNER TO neondb_owner;
 
 --
 -- TOC entry 221 (class 1259 OID 57372)
@@ -358,7 +434,7 @@ CREATE SEQUENCE public.usuarios_id_usuario_seq
 ALTER SEQUENCE public.usuarios_id_usuario_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3472 (class 0 OID 0)
+-- TOC entry 3502 (class 0 OID 0)
 -- Dependencies: 221
 -- Name: usuarios_id_usuario_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -367,7 +443,15 @@ ALTER SEQUENCE public.usuarios_id_usuario_seq OWNED BY public.usuarios.id_usuari
 
 
 --
--- TOC entry 3249 (class 2604 OID 57406)
+-- TOC entry 3272 (class 2604 OID 73732)
+-- Name: asignacion_ingenieros id_asignacion; Type: DEFAULT; Schema: public; Owner: neondb_owner
+--
+
+ALTER TABLE ONLY public.asignacion_ingenieros ALTER COLUMN id_asignacion SET DEFAULT nextval('public.asignacion_ingenieros_id_asignacion_seq'::regclass);
+
+
+--
+-- TOC entry 3261 (class 2604 OID 57406)
 -- Name: entidades_tecnicas id_entidad_tecnica; Type: DEFAULT; Schema: public; Owner: neondb_owner
 --
 
@@ -375,7 +459,7 @@ ALTER TABLE ONLY public.entidades_tecnicas ALTER COLUMN id_entidad_tecnica SET D
 
 
 --
--- TOC entry 3250 (class 2604 OID 57427)
+-- TOC entry 3262 (class 2604 OID 57427)
 -- Name: expedientes id_expediente; Type: DEFAULT; Schema: public; Owner: neondb_owner
 --
 
@@ -383,7 +467,7 @@ ALTER TABLE ONLY public.expedientes ALTER COLUMN id_expediente SET DEFAULT nextv
 
 
 --
--- TOC entry 3256 (class 2604 OID 57446)
+-- TOC entry 3268 (class 2604 OID 57446)
 -- Name: grupo_familiar id_grupo_familiar; Type: DEFAULT; Schema: public; Owner: neondb_owner
 --
 
@@ -391,7 +475,7 @@ ALTER TABLE ONLY public.grupo_familiar ALTER COLUMN id_grupo_familiar SET DEFAUL
 
 
 --
--- TOC entry 3248 (class 2604 OID 57392)
+-- TOC entry 3260 (class 2604 OID 57392)
 -- Name: ingenieros id_ingeniero; Type: DEFAULT; Schema: public; Owner: neondb_owner
 --
 
@@ -399,7 +483,7 @@ ALTER TABLE ONLY public.ingenieros ALTER COLUMN id_ingeniero SET DEFAULT nextval
 
 
 --
--- TOC entry 3246 (class 2604 OID 57360)
+-- TOC entry 3256 (class 2604 OID 57360)
 -- Name: personas id_persona; Type: DEFAULT; Schema: public; Owner: neondb_owner
 --
 
@@ -407,7 +491,7 @@ ALTER TABLE ONLY public.personas ALTER COLUMN id_persona SET DEFAULT nextval('pu
 
 
 --
--- TOC entry 3259 (class 2604 OID 65540)
+-- TOC entry 3271 (class 2604 OID 65540)
 -- Name: registros_et id_registro_et; Type: DEFAULT; Schema: public; Owner: neondb_owner
 --
 
@@ -415,7 +499,7 @@ ALTER TABLE ONLY public.registros_et ALTER COLUMN id_registro_et SET DEFAULT nex
 
 
 --
--- TOC entry 3245 (class 2604 OID 57351)
+-- TOC entry 3255 (class 2604 OID 57351)
 -- Name: tipos_documento id_tipo_documento; Type: DEFAULT; Schema: public; Owner: neondb_owner
 --
 
@@ -423,7 +507,7 @@ ALTER TABLE ONLY public.tipos_documento ALTER COLUMN id_tipo_documento SET DEFAU
 
 
 --
--- TOC entry 3247 (class 2604 OID 57376)
+-- TOC entry 3257 (class 2604 OID 57376)
 -- Name: usuarios id_usuario; Type: DEFAULT; Schema: public; Owner: neondb_owner
 --
 
@@ -431,16 +515,29 @@ ALTER TABLE ONLY public.usuarios ALTER COLUMN id_usuario SET DEFAULT nextval('pu
 
 
 --
--- TOC entry 3453 (class 0 OID 57403)
+-- TOC entry 3487 (class 0 OID 73729)
+-- Dependencies: 234
+-- Data for Name: asignacion_ingenieros; Type: TABLE DATA; Schema: public; Owner: neondb_owner
+--
+
+INSERT INTO public.asignacion_ingenieros VALUES (2, 2, 2, 'VIGENTE', '2026-06-03 07:11:48.629277');
+INSERT INTO public.asignacion_ingenieros VALUES (1, 1, 1, 'ANTERIOR', '2026-06-03 07:11:48.629277');
+INSERT INTO public.asignacion_ingenieros VALUES (3, 1, 3, 'ANTERIOR', '2026-06-03 17:05:08.981039');
+INSERT INTO public.asignacion_ingenieros VALUES (4, 1, 1, 'VIGENTE', '2026-06-03 17:07:20.812091');
+
+
+--
+-- TOC entry 3479 (class 0 OID 57403)
 -- Dependencies: 226
 -- Data for Name: entidades_tecnicas; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
 
-INSERT INTO public.entidades_tecnicas VALUES (1, '20607537942', 'CONSTRUCTORA E INVERSIONES COQUITOS S.A.C.', 'AA.HH. NUEVO FLORERNCIA III MZ D LOTE 30', 3, 1);
+INSERT INTO public.entidades_tecnicas VALUES (1, '20607537942', 'CONSTRUCTORA E INVERSIONES COQUITOS S.A.C.', 'AA.HH. NUEVO FLORERNCIA III MZ D LOTE 30', 3);
+INSERT INTO public.entidades_tecnicas VALUES (2, '20608212575', 'INVERSIONES & SERVICIOS MULTIPLES SENIA E.I.RL.', 'AA.HH. NUEVO FLORENCIA III MZ G LOTE 17', 5);
 
 
 --
--- TOC entry 3455 (class 0 OID 57424)
+-- TOC entry 3481 (class 0 OID 57424)
 -- Dependencies: 228
 -- Data for Name: expedientes; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -448,7 +545,7 @@ INSERT INTO public.entidades_tecnicas VALUES (1, '20607537942', 'CONSTRUCTORA E 
 
 
 --
--- TOC entry 3457 (class 0 OID 57443)
+-- TOC entry 3483 (class 0 OID 57443)
 -- Dependencies: 230
 -- Data for Name: grupo_familiar; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -456,28 +553,33 @@ INSERT INTO public.entidades_tecnicas VALUES (1, '20607537942', 'CONSTRUCTORA E 
 
 
 --
--- TOC entry 3451 (class 0 OID 57389)
+-- TOC entry 3477 (class 0 OID 57389)
 -- Dependencies: 224
 -- Data for Name: ingenieros; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
 
 INSERT INTO public.ingenieros VALUES (1, 4, '289068');
+INSERT INTO public.ingenieros VALUES (2, 6, '196235');
+INSERT INTO public.ingenieros VALUES (3, 2, '12345678');
 
 
 --
--- TOC entry 3447 (class 0 OID 57357)
+-- TOC entry 3473 (class 0 OID 57357)
 -- Dependencies: 220
 -- Data for Name: personas; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
 
-INSERT INTO public.personas VALUES (1, 1, '00000000', 'Administrador', 'Sistema', NULL, NULL, NULL, NULL);
-INSERT INTO public.personas VALUES (2, 1, '75953952', 'HEBER', 'ALVAREZ', NULL, NULL, 'hdalvarpa@gmail.com', NULL);
-INSERT INTO public.personas VALUES (3, 1, '45478905', 'JORGE RAFAEL ', 'MENDEZ CABALLERO', NULL, NULL, NULL, NULL);
-INSERT INTO public.personas VALUES (4, 1, '46527913', 'LUIS ANGEL', 'GOMEZ SEGURA', NULL, NULL, NULL, NULL);
+INSERT INTO public.personas VALUES (1, 1, '00000000', 'Administrador', NULL, NULL, NULL, NULL, 'Sistema', '');
+INSERT INTO public.personas VALUES (2, 1, '75953952', 'HEBER', NULL, NULL, 'hdalvarpa@gmail.com', NULL, 'ALVAREZ', '');
+INSERT INTO public.personas VALUES (3, 1, '45478905', 'JORGE RAFAEL ', NULL, NULL, NULL, NULL, 'MENDEZ', 'CABALLERO');
+INSERT INTO public.personas VALUES (4, 1, '46527913', 'LUIS ANGEL', NULL, NULL, NULL, NULL, 'GOMEZ', 'SEGURA');
+INSERT INTO public.personas VALUES (5, 1, '78021878', 'NAYKO NAY', NULL, NULL, NULL, NULL, 'CERQUIN', 'CABALLERO');
+INSERT INTO public.personas VALUES (6, 1, '71238683', 'CARLOS ALEJANDRO ANTONIO', NULL, NULL, NULL, NULL, 'ARAUJO', 'GUEVARA');
+INSERT INTO public.personas VALUES (7, 1, '75951111', 'NOMBRE PRUEBA', NULL, NULL, 'gaaaaaaaaaaaa@gmail.com', NULL, 'APELLIDO PATERNO', 'APELLIDO MATERNO');
 
 
 --
--- TOC entry 3459 (class 0 OID 65537)
+-- TOC entry 3485 (class 0 OID 65537)
 -- Dependencies: 232
 -- Data for Name: registros_et; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -486,7 +588,7 @@ INSERT INTO public.registros_et VALUES (1, 1, 'LIB-1073-22-1N-26', 2026);
 
 
 --
--- TOC entry 3445 (class 0 OID 57348)
+-- TOC entry 3471 (class 0 OID 57348)
 -- Dependencies: 218
 -- Data for Name: tipos_documento; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -495,26 +597,47 @@ INSERT INTO public.tipos_documento VALUES (1, 'DNI');
 
 
 --
--- TOC entry 3449 (class 0 OID 57373)
+-- TOC entry 3475 (class 0 OID 57373)
 -- Dependencies: 222
 -- Data for Name: usuarios; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
 
-INSERT INTO public.usuarios VALUES (3, 2, 'heber1', 'hdalvarpa@gmail.com', 'scrypt:32768:8:1$ZtkInDaGA5T1HFZI$180a2d08746fbc8bcca730f410d1b0cd3a7a710dab0fbd7ee90fd82198322728fc402b753f45d87cb1b2d158fe74f13793a269656d69ae84366b2331db2b922d');
-INSERT INTO public.usuarios VALUES (1, 1, 'admin1', 'admin@sistema.com', 'scrypt:32768:8:1$5xjOkHpMOP0Ixz9b$77083d976a1e42b07191c616b70a03b43db00573687e21aff9882d26bd67c8d3aec3c09024898a52ae75ec15523417f328da1acd6cc453964203a864709074dc');
+INSERT INTO public.usuarios VALUES (1, 1, 'admin1', 'admin@sistema.com', 'scrypt:32768:8:1$5xjOkHpMOP0Ixz9b$77083d976a1e42b07191c616b70a03b43db00573687e21aff9882d26bd67c8d3aec3c09024898a52ae75ec15523417f328da1acd6cc453964203a864709074dc', 'ADMIN', 'ACTIVO');
+INSERT INTO public.usuarios VALUES (3, 2, 'heber1', 'hdalvarpa@gmail.com', 'scrypt:32768:8:1$qGfLaUbYNOqAKx2s$7ae23c8a3d0df43ce5b421e06af98599cbfa6771d23659721eb70ae8b2e187fc88a35f2a1d5366efa50e6395c3a31c6635c4b256e6808224b4778a855ecdbbd8', 'USER', 'ACTIVO');
+INSERT INTO public.usuarios VALUES (4, 7, 'Prueba', 'gaaaaaaaaaaaa@gmail.com', 'scrypt:32768:8:1$Nrifg87SnwF9TLVH$71fd139f12d836406192bcc4ae0805cd509fd83d64e73bf019c4794f1cb07e2e936761a77af235ff134c22f3bc4edb88146b4908d573fe91be31536ce0203043', 'USER', 'ACTIVO');
 
 
 --
--- TOC entry 3473 (class 0 OID 0)
+-- TOC entry 3488 (class 0 OID 90112)
+-- Dependencies: 235
+-- Data for Name: usuarios_entidades; Type: TABLE DATA; Schema: public; Owner: neondb_owner
+--
+
+INSERT INTO public.usuarios_entidades VALUES (3, 1, '2026-06-03 17:28:04.702823');
+INSERT INTO public.usuarios_entidades VALUES (3, 2, '2026-06-03 21:32:38.864476');
+INSERT INTO public.usuarios_entidades VALUES (4, 1, '2026-06-03 21:56:19.177467');
+
+
+--
+-- TOC entry 3503 (class 0 OID 0)
+-- Dependencies: 233
+-- Name: asignacion_ingenieros_id_asignacion_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
+--
+
+SELECT pg_catalog.setval('public.asignacion_ingenieros_id_asignacion_seq', 4, true);
+
+
+--
+-- TOC entry 3504 (class 0 OID 0)
 -- Dependencies: 225
 -- Name: entidades_tecnicas_id_entidad_tecnica_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
 
-SELECT pg_catalog.setval('public.entidades_tecnicas_id_entidad_tecnica_seq', 1, true);
+SELECT pg_catalog.setval('public.entidades_tecnicas_id_entidad_tecnica_seq', 2, true);
 
 
 --
--- TOC entry 3474 (class 0 OID 0)
+-- TOC entry 3505 (class 0 OID 0)
 -- Dependencies: 227
 -- Name: expedientes_id_expediente_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
@@ -523,7 +646,7 @@ SELECT pg_catalog.setval('public.expedientes_id_expediente_seq', 1, false);
 
 
 --
--- TOC entry 3475 (class 0 OID 0)
+-- TOC entry 3506 (class 0 OID 0)
 -- Dependencies: 229
 -- Name: grupo_familiar_id_grupo_familiar_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
@@ -532,34 +655,34 @@ SELECT pg_catalog.setval('public.grupo_familiar_id_grupo_familiar_seq', 1, false
 
 
 --
--- TOC entry 3476 (class 0 OID 0)
+-- TOC entry 3507 (class 0 OID 0)
 -- Dependencies: 223
 -- Name: ingenieros_id_ingeniero_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
 
-SELECT pg_catalog.setval('public.ingenieros_id_ingeniero_seq', 1, true);
+SELECT pg_catalog.setval('public.ingenieros_id_ingeniero_seq', 3, true);
 
 
 --
--- TOC entry 3477 (class 0 OID 0)
+-- TOC entry 3508 (class 0 OID 0)
 -- Dependencies: 219
 -- Name: personas_id_persona_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
 
-SELECT pg_catalog.setval('public.personas_id_persona_seq', 4, true);
+SELECT pg_catalog.setval('public.personas_id_persona_seq', 7, true);
 
 
 --
--- TOC entry 3478 (class 0 OID 0)
+-- TOC entry 3509 (class 0 OID 0)
 -- Dependencies: 231
 -- Name: registros_et_id_registro_et_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
 
-SELECT pg_catalog.setval('public.registros_et_id_registro_et_seq', 1, true);
+SELECT pg_catalog.setval('public.registros_et_id_registro_et_seq', 4, true);
 
 
 --
--- TOC entry 3479 (class 0 OID 0)
+-- TOC entry 3510 (class 0 OID 0)
 -- Dependencies: 217
 -- Name: tipos_documento_id_tipo_documento_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
@@ -568,16 +691,25 @@ SELECT pg_catalog.setval('public.tipos_documento_id_tipo_documento_seq', 1, true
 
 
 --
--- TOC entry 3480 (class 0 OID 0)
+-- TOC entry 3511 (class 0 OID 0)
 -- Dependencies: 221
 -- Name: usuarios_id_usuario_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
 
-SELECT pg_catalog.setval('public.usuarios_id_usuario_seq', 3, true);
+SELECT pg_catalog.setval('public.usuarios_id_usuario_seq', 4, true);
 
 
 --
--- TOC entry 3279 (class 2606 OID 57408)
+-- TOC entry 3309 (class 2606 OID 73736)
+-- Name: asignacion_ingenieros asignacion_ingenieros_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
+--
+
+ALTER TABLE ONLY public.asignacion_ingenieros
+    ADD CONSTRAINT asignacion_ingenieros_pkey PRIMARY KEY (id_asignacion);
+
+
+--
+-- TOC entry 3295 (class 2606 OID 57408)
 -- Name: entidades_tecnicas entidades_tecnicas_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -586,7 +718,7 @@ ALTER TABLE ONLY public.entidades_tecnicas
 
 
 --
--- TOC entry 3281 (class 2606 OID 57410)
+-- TOC entry 3297 (class 2606 OID 57410)
 -- Name: entidades_tecnicas entidades_tecnicas_ruc_key; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -595,7 +727,7 @@ ALTER TABLE ONLY public.entidades_tecnicas
 
 
 --
--- TOC entry 3283 (class 2606 OID 57436)
+-- TOC entry 3299 (class 2606 OID 57436)
 -- Name: expedientes expedientes_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -604,7 +736,7 @@ ALTER TABLE ONLY public.expedientes
 
 
 --
--- TOC entry 3285 (class 2606 OID 57452)
+-- TOC entry 3301 (class 2606 OID 57452)
 -- Name: grupo_familiar grupo_familiar_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -613,7 +745,7 @@ ALTER TABLE ONLY public.grupo_familiar
 
 
 --
--- TOC entry 3275 (class 2606 OID 57396)
+-- TOC entry 3291 (class 2606 OID 57396)
 -- Name: ingenieros ingenieros_cip_key; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -622,7 +754,7 @@ ALTER TABLE ONLY public.ingenieros
 
 
 --
--- TOC entry 3277 (class 2606 OID 57394)
+-- TOC entry 3293 (class 2606 OID 57394)
 -- Name: ingenieros ingenieros_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -631,7 +763,7 @@ ALTER TABLE ONLY public.ingenieros
 
 
 --
--- TOC entry 3265 (class 2606 OID 57366)
+-- TOC entry 3281 (class 2606 OID 57366)
 -- Name: personas personas_numero_documento_key; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -640,7 +772,7 @@ ALTER TABLE ONLY public.personas
 
 
 --
--- TOC entry 3267 (class 2606 OID 57364)
+-- TOC entry 3283 (class 2606 OID 57364)
 -- Name: personas personas_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -649,7 +781,7 @@ ALTER TABLE ONLY public.personas
 
 
 --
--- TOC entry 3287 (class 2606 OID 65544)
+-- TOC entry 3303 (class 2606 OID 65544)
 -- Name: registros_et registros_et_id_entidad_tecnica_anio_key; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -658,7 +790,7 @@ ALTER TABLE ONLY public.registros_et
 
 
 --
--- TOC entry 3289 (class 2606 OID 65542)
+-- TOC entry 3305 (class 2606 OID 65542)
 -- Name: registros_et registros_et_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -667,7 +799,7 @@ ALTER TABLE ONLY public.registros_et
 
 
 --
--- TOC entry 3261 (class 2606 OID 57355)
+-- TOC entry 3277 (class 2606 OID 57355)
 -- Name: tipos_documento tipos_documento_codigo_key; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -676,7 +808,7 @@ ALTER TABLE ONLY public.tipos_documento
 
 
 --
--- TOC entry 3263 (class 2606 OID 57353)
+-- TOC entry 3279 (class 2606 OID 57353)
 -- Name: tipos_documento tipos_documento_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -685,7 +817,16 @@ ALTER TABLE ONLY public.tipos_documento
 
 
 --
--- TOC entry 3269 (class 2606 OID 57382)
+-- TOC entry 3307 (class 2606 OID 81921)
+-- Name: registros_et uk_entidad_anio; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
+--
+
+ALTER TABLE ONLY public.registros_et
+    ADD CONSTRAINT uk_entidad_anio UNIQUE (id_entidad_tecnica, anio);
+
+
+--
+-- TOC entry 3285 (class 2606 OID 57382)
 -- Name: usuarios usuarios_correo_electronico_key; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -694,7 +835,16 @@ ALTER TABLE ONLY public.usuarios
 
 
 --
--- TOC entry 3271 (class 2606 OID 57378)
+-- TOC entry 3311 (class 2606 OID 90117)
+-- Name: usuarios_entidades usuarios_entidades_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
+--
+
+ALTER TABLE ONLY public.usuarios_entidades
+    ADD CONSTRAINT usuarios_entidades_pkey PRIMARY KEY (id_usuario, id_entidad_tecnica);
+
+
+--
+-- TOC entry 3287 (class 2606 OID 57378)
 -- Name: usuarios usuarios_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -703,7 +853,7 @@ ALTER TABLE ONLY public.usuarios
 
 
 --
--- TOC entry 3273 (class 2606 OID 57380)
+-- TOC entry 3289 (class 2606 OID 57380)
 -- Name: usuarios usuarios_username_key; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -712,16 +862,33 @@ ALTER TABLE ONLY public.usuarios
 
 
 --
--- TOC entry 3293 (class 2606 OID 57418)
--- Name: entidades_tecnicas entidades_tecnicas_id_ingeniero_actual_fkey; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
+-- TOC entry 3324 (class 2620 OID 81923)
+-- Name: registros_et trg_check_delete_registro; Type: TRIGGER; Schema: public; Owner: neondb_owner
 --
 
-ALTER TABLE ONLY public.entidades_tecnicas
-    ADD CONSTRAINT entidades_tecnicas_id_ingeniero_actual_fkey FOREIGN KEY (id_ingeniero_actual) REFERENCES public.ingenieros(id_ingeniero);
+CREATE TRIGGER trg_check_delete_registro BEFORE DELETE ON public.registros_et FOR EACH ROW EXECUTE FUNCTION public.trg_prevent_delete_assigned_registro();
 
 
 --
--- TOC entry 3294 (class 2606 OID 57413)
+-- TOC entry 3320 (class 2606 OID 73737)
+-- Name: asignacion_ingenieros asignacion_ingenieros_id_entidad_tecnica_fkey; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
+--
+
+ALTER TABLE ONLY public.asignacion_ingenieros
+    ADD CONSTRAINT asignacion_ingenieros_id_entidad_tecnica_fkey FOREIGN KEY (id_entidad_tecnica) REFERENCES public.entidades_tecnicas(id_entidad_tecnica);
+
+
+--
+-- TOC entry 3321 (class 2606 OID 73742)
+-- Name: asignacion_ingenieros asignacion_ingenieros_id_ingeniero_fkey; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
+--
+
+ALTER TABLE ONLY public.asignacion_ingenieros
+    ADD CONSTRAINT asignacion_ingenieros_id_ingeniero_fkey FOREIGN KEY (id_ingeniero) REFERENCES public.ingenieros(id_ingeniero);
+
+
+--
+-- TOC entry 3315 (class 2606 OID 57413)
 -- Name: entidades_tecnicas entidades_tecnicas_id_representante_legal_fkey; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -730,7 +897,7 @@ ALTER TABLE ONLY public.entidades_tecnicas
 
 
 --
--- TOC entry 3295 (class 2606 OID 57437)
+-- TOC entry 3316 (class 2606 OID 57437)
 -- Name: expedientes expedientes_id_entidad_tecnica_fkey; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -739,7 +906,25 @@ ALTER TABLE ONLY public.expedientes
 
 
 --
--- TOC entry 3296 (class 2606 OID 57453)
+-- TOC entry 3322 (class 2606 OID 90123)
+-- Name: usuarios_entidades fk_entidad; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
+--
+
+ALTER TABLE ONLY public.usuarios_entidades
+    ADD CONSTRAINT fk_entidad FOREIGN KEY (id_entidad_tecnica) REFERENCES public.entidades_tecnicas(id_entidad_tecnica) ON DELETE CASCADE;
+
+
+--
+-- TOC entry 3323 (class 2606 OID 90118)
+-- Name: usuarios_entidades fk_usuario; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
+--
+
+ALTER TABLE ONLY public.usuarios_entidades
+    ADD CONSTRAINT fk_usuario FOREIGN KEY (id_usuario) REFERENCES public.usuarios(id_usuario) ON DELETE CASCADE;
+
+
+--
+-- TOC entry 3317 (class 2606 OID 57453)
 -- Name: grupo_familiar grupo_familiar_id_expediente_fkey; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -748,7 +933,7 @@ ALTER TABLE ONLY public.grupo_familiar
 
 
 --
--- TOC entry 3297 (class 2606 OID 57458)
+-- TOC entry 3318 (class 2606 OID 57458)
 -- Name: grupo_familiar grupo_familiar_id_persona_fkey; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -757,7 +942,7 @@ ALTER TABLE ONLY public.grupo_familiar
 
 
 --
--- TOC entry 3292 (class 2606 OID 57397)
+-- TOC entry 3314 (class 2606 OID 57397)
 -- Name: ingenieros ingenieros_id_persona_fkey; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -766,7 +951,7 @@ ALTER TABLE ONLY public.ingenieros
 
 
 --
--- TOC entry 3290 (class 2606 OID 57367)
+-- TOC entry 3312 (class 2606 OID 57367)
 -- Name: personas personas_id_tipo_documento_fkey; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -775,7 +960,7 @@ ALTER TABLE ONLY public.personas
 
 
 --
--- TOC entry 3298 (class 2606 OID 65545)
+-- TOC entry 3319 (class 2606 OID 65545)
 -- Name: registros_et registros_et_id_entidad_tecnica_fkey; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -784,7 +969,7 @@ ALTER TABLE ONLY public.registros_et
 
 
 --
--- TOC entry 3291 (class 2606 OID 57383)
+-- TOC entry 3313 (class 2606 OID 57383)
 -- Name: usuarios usuarios_id_persona_fkey; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -793,7 +978,7 @@ ALTER TABLE ONLY public.usuarios
 
 
 --
--- TOC entry 2080 (class 826 OID 16394)
+-- TOC entry 2090 (class 826 OID 16394)
 -- Name: DEFAULT PRIVILEGES FOR SEQUENCES; Type: DEFAULT ACL; Schema: public; Owner: cloud_admin
 --
 
@@ -801,82 +986,16 @@ ALTER DEFAULT PRIVILEGES FOR ROLE cloud_admin IN SCHEMA public GRANT ALL ON SEQU
 
 
 --
--- TOC entry 2079 (class 826 OID 16393)
+-- TOC entry 2089 (class 826 OID 16393)
 -- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: public; Owner: cloud_admin
 --
 
 ALTER DEFAULT PRIVILEGES FOR ROLE cloud_admin IN SCHEMA public GRANT ALL ON TABLES TO neon_superuser WITH GRANT OPTION;
 
 
--- Completed on 2026-06-03 00:38:45
+-- Completed on 2026-06-07 12:03:56
 
 --
 -- PostgreSQL database dump complete
 --
 
--- 1. Agregamos las dos nuevas columnas a la tabla Personas
-ALTER TABLE personas ADD COLUMN apellido_paterno VARCHAR(100);
-ALTER TABLE personas ADD COLUMN apellido_materno VARCHAR(100);
-
--- 2. Migramos los datos cortando el texto por el primer espacio
-UPDATE personas 
-SET 
-    apellido_paterno = split_part(apellidos, ' ', 1),
-    apellido_materno = CASE 
-        -- Si hay más de un apellido (hay espacio), ponemos todo lo que sigue en materno
-        WHEN strpos(apellidos, ' ') > 0 THEN substring(apellidos from strpos(apellidos, ' ') + 1)
-        -- Si la persona solo tenía registrado un apellido (no hay espacio), lo dejamos en blanco
-        ELSE '' 
-    END;
-
--- 3. Eliminamos la columna vieja para dejar la base de datos limpia
-ALTER TABLE personas DROP COLUMN apellidos;
-
-
-CREATE TABLE Asignacion_Ingenieros (
-    id_asignacion SERIAL PRIMARY KEY,
-    id_entidad_tecnica INT NOT NULL,
-    id_ingeniero INT NOT NULL,
-    estado VARCHAR(20) DEFAULT 'VIGENTE',
-    fecha_asignacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (id_entidad_tecnica) REFERENCES Entidades_Tecnicas(id_entidad_tecnica),
-    FOREIGN KEY (id_ingeniero) REFERENCES Ingenieros(id_ingeniero)
-);
--- 2. Migrar los ingenieros actuales hacia la nueva tabla de asignaciones
-INSERT INTO Asignacion_Ingenieros (id_entidad_tecnica, id_ingeniero, estado)
-SELECT id_entidad_tecnica, id_ingeniero_actual, 'VIGENTE'
-FROM Entidades_Tecnicas
-WHERE id_ingeniero_actual IS NOT NULL;
--- 3. Eliminar la columna de la tabla Entidades_Tecnicas (el CASCADE elimina la llave foránea automáticamente)
-ALTER TABLE Entidades_Tecnicas DROP COLUMN id_ingeniero_actual CASCADE;
-
--- ==============================================================================================
--- ACTUALIZACIÓN 3: Independización de Códigos de Registro ET (Registros Anuales huérfanos)
--- ==============================================================================================
-
--- 1. Quitar la obligatoriedad (NOT NULL) de la columna id_entidad_tecnica
-ALTER TABLE registros_et ALTER COLUMN id_entidad_tecnica DROP NOT NULL;
-
--- ==============================================================================================
--- ACTUALIZACIÓN 4: Restricciones de Base de Datos para Códigos ET (Doble Capa de Seguridad)
--- ==============================================================================================
-
--- A. CONSTRAINT UNIQUE: Una Entidad Técnica solo puede tener un código de registro por año
-ALTER TABLE registros_et 
-ADD CONSTRAINT uk_entidad_anio UNIQUE (id_entidad_tecnica, anio);
-
--- B. TRIGGER: Evitar que se elimine un RegistroET si ya está asignado a una Entidad
-CREATE OR REPLACE FUNCTION trg_prevent_delete_assigned_registro()
-RETURNS TRIGGER AS $$
-BEGIN
-    IF OLD.id_entidad_tecnica IS NOT NULL THEN
-        RAISE EXCEPTION 'No se puede eliminar el código % del año % porque está asignado a una entidad.', OLD.codigo_registro, OLD.anio;
-    END IF;
-    RETURN OLD;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trg_check_delete_registro
-BEFORE DELETE ON registros_et
-FOR EACH ROW
-EXECUTE FUNCTION trg_prevent_delete_assigned_registro();

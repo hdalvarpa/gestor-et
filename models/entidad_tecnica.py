@@ -8,20 +8,16 @@ class EntidadTecnica(db.Model):
     razon_social = db.Column(db.String(150), nullable=False)
     direccion = db.Column(db.String(255))
     id_representante_legal = db.Column(db.Integer, db.ForeignKey('personas.id_persona'), nullable=False)
+    id_ingeniero_vigente = db.Column(db.Integer, db.ForeignKey('ingenieros.id_ingeniero'), nullable=True)
     
     # Relationships
     representante_legal = db.relationship('Persona', backref=db.backref('entidades_representadas', lazy=True))
     registros = db.relationship('RegistroET', backref='entidad_tecnica', cascade="all, delete-orphan")
-    asignaciones_ingenieros = db.relationship('AsignacionIngeniero', backref='entidad_tecnica', cascade="all, delete-orphan", order_by="desc(AsignacionIngeniero.id_asignacion)")
+    ingeniero_vigente = db.relationship('Ingeniero', foreign_keys=[id_ingeniero_vigente])
 
     @property
     def ingeniero_actual(self):
-        # Devuelve el objeto AsignacionIngeniero vigente (o el objeto Ingeniero directamente, lo que sea más fácil)
-        # Vamos a devolver el objeto Ingeniero, o None si no tiene asignación vigente
-        for asig in self.asignaciones_ingenieros:
-            if asig.estado == 'VIGENTE':
-                return asig.ingeniero
-        return None
+        return self.ingeniero_vigente
     
     def __repr__(self):
         return f'<EntidadTecnica {self.razon_social}>'

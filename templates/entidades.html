@@ -3,9 +3,11 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2>Gestión de Entidades Técnicas</h2>
+    {% if current_user and current_user.tiene_permiso('CREAR_ENTIDADES') %}
     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevaEntidad">
         ➕ Nueva Entidad Técnica
     </button>
+    {% endif %}
 </div>
 
 <!-- Mensajes Flash (Errores/Éxitos) -->
