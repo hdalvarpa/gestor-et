@@ -4,8 +4,7 @@ class Persona(db.Model):
     __tablename__ = 'personas'
     
     id_persona = db.Column(db.Integer, primary_key=True)
-    id_tipo_documento = db.Column(db.Integer, nullable=False, default=1) # 1 = DNI
-    numero_documento = db.Column(db.String(20), unique=True, nullable=False)
+    dni = db.Column(db.String(20), unique=True, nullable=False)
     nombres = db.Column(db.String(100), nullable=False)
     apellido_paterno = db.Column(db.String(100), nullable=True)
     apellido_materno = db.Column(db.String(100), nullable=True)

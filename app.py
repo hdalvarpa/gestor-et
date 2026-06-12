@@ -23,12 +23,15 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from models.database import db
 from models.usuario import Usuario
 from models.persona import Persona
-from models.rol import Rol
-from models.permiso import Permiso
 from models.entidad_tecnica import EntidadTecnica
 from models.ingeniero import Ingeniero
 from models.registro_et import RegistroET
-
+from models.ficha_inscripcion import FichaInscripcion
+from models.ficha_predio import FichaPredio
+from models.ficha_jefe import FichaJefe
+from models.ficha_conyuge import FichaConyuge
+from models.ficha_carga import FichaCarga
+from models.ficha_adicional import FichaAdicional
 app = Flask(__name__)
 app.secret_key = 'clave_secreta_ptp_fipi_2025'  # Clave para firmar las sesiones
 
@@ -72,27 +75,7 @@ def get_current_user():
     return None
 
 def get_entidades_permitidas():
-    user = get_current_user()
-    if not user:
-        return []
-    if user.rol.nombre == 'SuperAdmin':
-        return EntidadTecnica.query.all()
-    else:
-        return user.entidades
-
-def permiso_requerido(nombre_permiso):
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            if 'usuario' not in session:
-                return redirect(url_for('mostrar_login'))
-            user = get_current_user()
-            if not user or not user.tiene_permiso(nombre_permiso):
-                flash(f'Acceso denegado: Se requiere el permiso {nombre_permiso}.', 'danger')
-                return redirect(url_for('dashboard'))
-            return f(*args, **kwargs)
-        return decorated_function
-    return decorator
+    return EntidadTecnica.query.all()
 
 @app.context_processor
 def inject_user():
@@ -130,8 +113,8 @@ def dashboard():
 @app.route('/formulario')
 @login_requerido
 def formulario():
-    # Renderiza el formulario que hereda de base.html
-    return render_template('formulario.html')
+    entidades = get_entidades_permitidas()
+    return render_template('formulario.html', entidades=entidades)
 
 # 3.5 RUTA CONSTATACION
 @app.route('/constatacion', methods=['GET', 'POST'])
@@ -326,14 +309,11 @@ def logout():
 # ==========================================
 
 @app.route('/usuarios')
-@permiso_requerido('GESTIONAR_SEGURIDAD')
 def listar_usuarios():
     usuarios = Usuario.query.all()
-    roles = Rol.query.all()
-    return render_template('usuarios.html', usuarios=usuarios, roles=roles)
+    return render_template('usuarios.html', usuarios=usuarios)
 
 @app.route('/usuarios/crear', methods=['POST'])
-@permiso_requerido('GESTIONAR_SEGURIDAD')
 def crear_usuario():
     nuevo_username = request.form.get('nuevo_usuario')
     nuevo_correo = request.form.get('nuevo_correo')
@@ -351,7 +331,7 @@ def crear_usuario():
     else:
         try:
             # 1. Verificar si la Persona ya existe
-            persona_existente = Persona.query.filter_by(numero_documento=nuevo_dni).first()
+            persona_existente = Persona.query.filter_by(dni=nuevo_dni).first()
             
             if persona_existente:
                 # Si la persona existe, verificar que no tenga ya un usuario
@@ -362,8 +342,8 @@ def crear_usuario():
             else:
                 # 1. Crear Persona nueva si no existe
                 nueva_persona = Persona(
-                    id_tipo_documento=1, # DNI
-                    numero_documento=nuevo_dni,
+                    
+                    dni=nuevo_dni,
                     nombres=nuevo_nombres.upper(),
                     apellido_paterno=nuevo_ap_paterno.upper(),
                     apellido_materno=nuevo_ap_materno.upper() if nuevo_ap_materno else '',
@@ -378,8 +358,7 @@ def crear_usuario():
                 username=nuevo_username, 
                 correo_electronico=nuevo_correo, 
                 password_hash=hashed_pw,
-                id_persona=nueva_persona.id_persona,
-                id_rol=(Rol.query.filter_by(nombre='Usuario Básico').first().id_rol if Rol.query.filter_by(nombre='Usuario Básico').first() else 1)
+                id_persona=nueva_persona.id_persona
             )
             db.session.add(nuevo_user)
             db.session.commit()
@@ -392,7 +371,6 @@ def crear_usuario():
     return redirect(url_for('listar_usuarios'))
 
 @app.route('/usuarios/cambiar_clave/<int:id>', methods=['POST'])
-@permiso_requerido('GESTIONAR_SEGURIDAD')
 def cambiar_clave(id):
     usuario = Usuario.query.get_or_404(id)
     nueva_clave = request.form.get('nueva_clave')
@@ -404,7 +382,6 @@ def cambiar_clave(id):
     return redirect(url_for('listar_usuarios'))
 
 @app.route('/usuarios/eliminar/<int:id>', methods=['POST'])
-@permiso_requerido('GESTIONAR_SEGURIDAD')
 def eliminar_usuario(id):
     usuario = Usuario.query.get_or_404(id)
     
@@ -417,15 +394,6 @@ def eliminar_usuario(id):
         
     return redirect(url_for('listar_usuarios'))
 
-@app.route('/usuarios/cambiar_rol/<int:id>', methods=['POST'])
-@permiso_requerido('GESTIONAR_SEGURIDAD')
-def cambiar_rol(id):
-    usuario = Usuario.query.get_or_404(id)
-    id_rol = request.form.get('id_rol')
-    
-    if usuario.username == 'admin1' and str(id_rol) != str(Rol.query.filter_by(nombre='SuperAdmin').first().id_rol):
-        flash('No puedes quitarle el rol de SuperAdmin al usuario principal admin1.', 'danger')
-        return redirect(url_for('listar_usuarios'))
         
     try:
         nuevo_rol = Rol.query.get(id_rol)
@@ -439,9 +407,9 @@ def cambiar_rol(id):
         
     return redirect(url_for('listar_usuarios'))
 
-# 4. RUTA GENERAR PDF (La lógica pesada)
-@app.route('/generar', methods=['POST'])
-def generar_pdf():
+# 4. RUTA GENERAR PDF RAPIDO (Sin BD)
+@app.route('/generar_rapido', methods=['POST'])
+def generar_pdf_rapido():
 
     if not os.path.exists(NOMBRE_PLANTILLA):
         return "Error: No encuentro la plantilla (asegúrate que el nombre coincida).", 404
@@ -531,6 +499,128 @@ def generar_pdf():
             telefono=request.form.get('telefono_contacto') or ""
         )
 
+        packet = crear_pdf_datos(mi_predio, mi_jefe, mi_conyuge, carga_1, carga_2, carga_3, familiar_adic_1, mi_contacto)
+
+        new_pdf = PdfReader(packet)
+        existing_pdf = PdfReader(NOMBRE_PLANTILLA)
+        output = PdfWriter()
+
+        for i in range(len(existing_pdf.pages)):
+            page = existing_pdf.pages[i]
+            if i < len(new_pdf.pages):
+                page.merge_page(new_pdf.pages[i])
+            output.add_page(page)
+
+        output_stream = io.BytesIO()
+        output.write(output_stream)
+
+        output_stream.seek(0)
+        return send_file(
+            output_stream,
+            as_attachment=True,
+            download_name=f"Ficha_{request.form.get('dni_jefe')}.pdf",
+            mimetype='application/pdf'
+        )
+    except Exception as e:
+        return f"Ocurrió un error: {e}", 500
+
+# 4.5 RUTA GENERAR PDF DESDE LA BD
+@app.route('/generar/<int:id_ficha>', methods=['POST', 'GET'])
+@login_requerido
+def generar_pdf(id_ficha):
+    ficha = FichaInscripcion.query.get_or_404(id_ficha)
+
+    if not os.path.exists(NOMBRE_PLANTILLA):
+        return "Error: No encuentro la plantilla (asegúrate que el nombre coincida).", 404
+
+    try:
+        # Creamos el objeto mi_predio con los datos de la BD
+        mi_predio = Predio(
+            direccion=ficha.predio.direccion if ficha.predio else "",
+            departamento=ficha.predio.departamento if ficha.predio else "",
+            provincia=ficha.predio.provincia if ficha.predio else "",
+            distrito=ficha.predio.distrito if ficha.predio else "",
+            manzana=ficha.predio.manzana if ficha.predio else "",
+            lote=ficha.predio.lote if ficha.predio else "",
+            sublote=ficha.predio.sublote if ficha.predio else "",
+            centro_poblado=ficha.predio.centro_poblado if ficha.predio else "",
+            referencia=ficha.predio.referencia if ficha.predio else ""
+        )
+
+        mi_jefe = Jefe(
+            nombres=ficha.jefe.nombres if ficha.jefe else "",
+            ap_paterno=ficha.jefe.ap_paterno if ficha.jefe else "",
+            ap_materno=ficha.jefe.ap_materno if ficha.jefe else "",
+            sit_laboral=ficha.jefe.sit_laboral if ficha.jefe else "",
+            dni=ficha.jefe.dni if ficha.jefe else "",
+            nacimiento=ficha.jefe.nacimiento if ficha.jefe else "",
+            estado_civil=ficha.jefe.estado_civil if ficha.jefe else "",
+            condicion_eco=ficha.jefe.condicion_eco if ficha.jefe else "",
+            grado_instruccion=ficha.jefe.grado_instruccion if ficha.jefe else "",
+            ocupacion=ficha.jefe.ocupacion if ficha.jefe else "",
+            discapacidad=ficha.jefe.discapacidad if ficha.jefe else "",
+            ingreso_mensual=ficha.jefe.ingreso_mensual if ficha.jefe else ""
+        )
+
+        mi_conyuge = Conyuge(
+            nombres=ficha.conyuge.nombres if ficha.conyuge else "",
+            ap_paterno=ficha.conyuge.ap_paterno if ficha.conyuge else "",
+            ap_materno=ficha.conyuge.ap_materno if ficha.conyuge else "",
+            sit_laboral=ficha.conyuge.sit_laboral if ficha.conyuge else "",
+            dni=ficha.conyuge.dni if ficha.conyuge else "",
+            nacimiento=ficha.conyuge.nacimiento if ficha.conyuge else "",
+            estado_civil=ficha.conyuge.estado_civil if ficha.conyuge else "",
+            condicion_eco=ficha.conyuge.condicion if ficha.conyuge else "",
+            grado_instruccion=ficha.conyuge.grado_instruccion if ficha.conyuge else "",
+            ocupacion=ficha.conyuge.ocupacion if ficha.conyuge else "",
+            discapacidad=ficha.conyuge.discapacidad if ficha.conyuge else "",
+            ingreso_mensual=ficha.conyuge.ingreso_mensual if ficha.conyuge else ""
+        )
+
+        # Map cargas
+        cargas_list = ficha.cargas
+        carga_1 = CargaFamiliar(
+            nombres=cargas_list[0].nombres if len(cargas_list) > 0 else "",
+            dni=cargas_list[0].dni if len(cargas_list) > 0 else "",
+            nacimiento=cargas_list[0].nacimiento if len(cargas_list) > 0 else "",
+            vinculo=cargas_list[0].vinculo if len(cargas_list) > 0 else "",
+            instruccion=cargas_list[0].instruccion if len(cargas_list) > 0 else "",
+            discapacidad=cargas_list[0].discapacidad if len(cargas_list) > 0 else ""
+        )
+
+        carga_2 = CargaFamiliar(
+            nombres=cargas_list[1].nombres if len(cargas_list) > 1 else "",
+            dni=cargas_list[1].dni if len(cargas_list) > 1 else "",
+            nacimiento=cargas_list[1].nacimiento if len(cargas_list) > 1 else "",
+            vinculo=cargas_list[1].vinculo if len(cargas_list) > 1 else "",
+            instruccion=cargas_list[1].instruccion if len(cargas_list) > 1 else "",
+            discapacidad=cargas_list[1].discapacidad if len(cargas_list) > 1 else ""
+        )
+
+        carga_3 = CargaFamiliar(
+            nombres=cargas_list[2].nombres if len(cargas_list) > 2 else "",
+            dni=cargas_list[2].dni if len(cargas_list) > 2 else "",
+            nacimiento=cargas_list[2].nacimiento if len(cargas_list) > 2 else "",
+            vinculo=cargas_list[2].vinculo if len(cargas_list) > 2 else "",
+            instruccion=cargas_list[2].instruccion if len(cargas_list) > 2 else "",
+            discapacidad=cargas_list[2].discapacidad if len(cargas_list) > 2 else ""
+        )
+
+        # Map adicional
+        adicionales_list = ficha.adicionales
+        familiar_adic_1 = FamiliarAdicional(
+            nombres=adicionales_list[0].nombres if len(adicionales_list) > 0 else "",
+            ap_paterno=adicionales_list[0].ap_paterno if len(adicionales_list) > 0 else "",
+            ap_materno=adicionales_list[0].ap_materno if len(adicionales_list) > 0 else "",
+            dni=adicionales_list[0].dni if len(adicionales_list) > 0 else "",
+            vinculo=adicionales_list[0].vinculo if len(adicionales_list) > 0 else ""
+        )
+
+        mi_contacto = Contacto(
+            correo=ficha.correo_contacto or "",
+            telefono=ficha.telefono_contacto or ""
+        )
+
 
         # --- 1. CREAMOS EL LIENZO (CANVAS) CON LOS DATOS ---
         packet = crear_pdf_datos(mi_predio, mi_jefe, mi_conyuge, carga_1, carga_2, carga_3, familiar_adic_1, mi_contacto)
@@ -558,7 +648,7 @@ def generar_pdf():
         return send_file(
             output_stream,
             as_attachment=True,
-            download_name=f"Ficha_{request.form.get('dni_jefe')}.pdf",
+            download_name=f"Ficha_{ficha.jefe.dni if ficha.jefe else ficha.id_ficha}.pdf",
             mimetype='application/pdf'
         )
 
@@ -794,13 +884,11 @@ def crear_pdf_datos(mi_predio, mi_jefe, mi_conyuge, carga_1, carga_2, carga_3, f
 # ==========================================
 
 @app.route('/entidades')
-@permiso_requerido('VER_ENTIDADES')
 def listar_entidades():
     entidades = get_entidades_permitidas()
     return render_template('entidades.html', entidades=entidades)
 
 @app.route('/entidades/crear', methods=['POST'])
-@permiso_requerido('CREAR_ENTIDADES')
 def crear_entidad():
     # Datos de la Entidad
     ruc = request.form.get('ruc', '').strip()
@@ -819,11 +907,11 @@ def crear_entidad():
         
     try:
         # 1. Gestionar Representante Legal (Persona)
-        rep_persona = Persona.query.filter_by(numero_documento=rep_dni).first()
+        rep_persona = Persona.query.filter_by(dni=rep_dni).first()
         if not rep_persona:
             rep_persona = Persona(
-                id_tipo_documento=1, 
-                numero_documento=rep_dni, 
+                 
+                dni=rep_dni, 
                 nombres=rep_nombres.upper(), 
                 apellido_paterno=rep_ap_paterno.upper(),
                 apellido_materno=rep_ap_materno.upper() if rep_ap_materno else ''
@@ -849,7 +937,6 @@ def crear_entidad():
     return redirect(url_for('listar_entidades'))
 
 @app.route('/entidades/eliminar/<int:id>', methods=['POST'])
-@permiso_requerido('CREAR_ENTIDADES')
 def eliminar_entidad(id):
     entidad = EntidadTecnica.query.get_or_404(id)
     try:
@@ -867,13 +954,11 @@ def eliminar_entidad(id):
 # ==========================================
 
 @app.route('/registros_et')
-@permiso_requerido('GESTIONAR_REGISTROS')
 def listar_registros():
     registros = RegistroET.query.order_by(RegistroET.anio.desc()).all()
     return render_template('registros_et.html', registros=registros)
 
 @app.route('/registros_et/crear', methods=['POST'])
-@permiso_requerido('GESTIONAR_REGISTROS')
 def crear_registro():
     codigo_registro = request.form.get('codigo_registro')
     anio = request.form.get('anio')
@@ -899,7 +984,6 @@ def crear_registro():
     return redirect(url_for('listar_registros'))
 
 @app.route('/registros_et/eliminar/<int:id>', methods=['POST'])
-@permiso_requerido('GESTIONAR_REGISTROS')
 def eliminar_registro(id):
     registro = RegistroET.query.get_or_404(id)
     
@@ -922,7 +1006,6 @@ def eliminar_registro(id):
 # ==========================================
 
 @app.route('/asignacion_registros')
-@permiso_requerido('ASIGNAR_REGISTROS')
 def listar_asignaciones_registros():
     # Solo mostrar registros que YA están asignados
     asignaciones = RegistroET.query.filter(RegistroET.id_entidad_tecnica.isnot(None)).order_by(RegistroET.anio.desc()).all()
@@ -939,7 +1022,6 @@ def listar_asignaciones_registros():
     return render_template('asignacion_registros.html', asignaciones=asignaciones, entidades=entidades, registros_libres=registros_libres)
 
 @app.route('/asignacion_registros/crear', methods=['POST'])
-@permiso_requerido('ASIGNAR_REGISTROS')
 def crear_asignacion_registro():
     id_entidad = request.form.get('id_entidad_tecnica')
     id_registro_et = request.form.get('id_registro_et')
@@ -964,7 +1046,6 @@ def crear_asignacion_registro():
     return redirect(url_for('listar_asignaciones_registros'))
 
 @app.route('/asignacion_registros/eliminar/<int:id>', methods=['POST'])
-@permiso_requerido('ASIGNAR_REGISTROS')
 def eliminar_asignacion_registro(id):
     registro = RegistroET.query.get_or_404(id)
     try:
@@ -983,7 +1064,6 @@ def eliminar_asignacion_registro(id):
 # ==========================================
 
 @app.route('/asignacion_ingenieros')
-@permiso_requerido('ASIGNAR_INGENIEROS')
 def listar_asignaciones():
     # Solo mostramos las asignaciones de las entidades permitidas
     entidades_permitidas = get_entidades_permitidas()
@@ -991,7 +1071,6 @@ def listar_asignaciones():
     return render_template('asignacion_ingenieros.html', entidades=entidades_permitidas, ingenieros=ingenieros)
 
 @app.route('/asignacion_ingenieros/crear', methods=['POST'])
-@permiso_requerido('ASIGNAR_INGENIEROS')
 def crear_asignacion():
     id_entidad = request.form.get('id_entidad_tecnica')
     id_ingeniero = request.form.get('id_ingeniero')
@@ -1008,7 +1087,6 @@ def crear_asignacion():
     return redirect(url_for('listar_asignaciones'))
 
 @app.route('/asignacion_ingenieros/eliminar/<int:id>', methods=['POST'])
-@permiso_requerido('ASIGNAR_INGENIEROS')
 def eliminar_asignacion(id):
     entidad = EntidadTecnica.query.get_or_404(id)
     try:
@@ -1026,13 +1104,11 @@ def eliminar_asignacion(id):
 # ==========================================
 
 @app.route('/ingenieros')
-@permiso_requerido('GESTIONAR_INGENIEROS')
 def listar_ingenieros():
     ingenieros = Ingeniero.query.all()
     return render_template('ingenieros.html', ingenieros=ingenieros)
 
 @app.route('/ingenieros/crear', methods=['POST'])
-@permiso_requerido('GESTIONAR_INGENIEROS')
 def crear_ingeniero():
     ing_dni = request.form.get('ing_dni')
     ing_nombres = request.form.get('ing_nombres')
@@ -1045,11 +1121,11 @@ def crear_ingeniero():
         return redirect(url_for('listar_ingenieros'))
         
     try:
-        ing_persona = Persona.query.filter_by(numero_documento=ing_dni).first()
+        ing_persona = Persona.query.filter_by(dni=ing_dni).first()
         if not ing_persona:
             ing_persona = Persona(
-                id_tipo_documento=1, 
-                numero_documento=ing_dni, 
+                 
+                dni=ing_dni, 
                 nombres=ing_nombres.upper(), 
                 apellido_paterno=ing_ap_paterno.upper(),
                 apellido_materno=ing_ap_materno.upper() if ing_ap_materno else ''
@@ -1069,7 +1145,6 @@ def crear_ingeniero():
     return redirect(url_for('listar_ingenieros'))
 
 @app.route('/ingenieros/eliminar/<int:id>', methods=['POST'])
-@permiso_requerido('GESTIONAR_INGENIEROS')
 def eliminar_ingeniero(id):
     ingeniero = Ingeniero.query.get_or_404(id)
     try:
@@ -1087,7 +1162,6 @@ def eliminar_ingeniero(id):
 # ==========================================
 
 @app.route('/asignacion_usuarios')
-@permiso_requerido('ASIGNAR_ENTIDADES')
 def listar_asignaciones_usuarios():
     # Obtener todos los usuarios que no son super administradores del sistema (opcional)
     usuarios = Usuario.query.all()
@@ -1097,7 +1171,6 @@ def listar_asignaciones_usuarios():
     return render_template('asignacion_usuarios.html', usuarios=usuarios, entidades=entidades)
 
 @app.route('/asignacion_usuarios/crear', methods=['POST'])
-@permiso_requerido('ASIGNAR_ENTIDADES')
 def crear_asignacion_usuario():
     id_usuario = request.form.get('id_usuario')
     id_entidad = request.form.get('id_entidad_tecnica')
@@ -1120,7 +1193,6 @@ def crear_asignacion_usuario():
     return redirect(url_for('listar_asignaciones_usuarios'))
 
 @app.route('/asignacion_usuarios/eliminar/<int:id_usuario>/<int:id_entidad>', methods=['POST'])
-@permiso_requerido('ASIGNAR_ENTIDADES')
 def eliminar_asignacion_usuario(id_usuario, id_entidad):
     usuario = Usuario.query.get_or_404(id_usuario)
     entidad = EntidadTecnica.query.get_or_404(id_entidad)
@@ -1136,26 +1208,6 @@ def eliminar_asignacion_usuario(id_usuario, id_entidad):
     
     return redirect(url_for('listar_asignaciones_usuarios'))
 
-# ==========================================
-# GESTIÓN DE ROLES Y PERMISOS
-# ==========================================
-
-@app.route('/roles')
-@permiso_requerido('GESTIONAR_SEGURIDAD')
-def listar_roles():
-    roles = Rol.query.all()
-    permisos = Permiso.query.order_by(Permiso.nombre).all()
-    return render_template('roles.html', roles=roles, permisos=permisos)
-
-@app.route('/roles/crear', methods=['POST'])
-@permiso_requerido('GESTIONAR_SEGURIDAD')
-def crear_rol():
-    nombre = request.form.get('nombre')
-    permisos_ids = request.form.getlist('permisos') # Lista de IDs de permisos seleccionados
-    
-    if Rol.query.filter_by(nombre=nombre).first():
-        flash(f'El rol {nombre} ya existe.', 'danger')
-        return redirect(url_for('listar_roles'))
         
     try:
         nuevo_rol = Rol(nombre=nombre)
@@ -1175,7 +1227,6 @@ def crear_rol():
     return redirect(url_for('listar_roles'))
 
 @app.route('/roles/editar/<int:id>', methods=['POST'])
-@permiso_requerido('GESTIONAR_SEGURIDAD')
 def editar_rol(id):
     rol = Rol.query.get_or_404(id)
     
@@ -1205,7 +1256,7 @@ from flask import jsonify
 
 @app.route('/api/persona/<dni>')
 def api_buscar_persona(dni):
-    persona = Persona.query.filter_by(numero_documento=dni).first()
+    persona = Persona.query.filter_by(dni=dni).first()
     if persona:
         return jsonify({
             'encontrado': True,
@@ -1215,6 +1266,243 @@ def api_buscar_persona(dni):
             'correo': persona.correo
         })
     return jsonify({'encontrado': False})
+
+# ==========================================
+# GESTIÓN DE FICHAS DE INSCRIPCIÓN
+# ==========================================
+
+@app.route('/fichas')
+@login_requerido
+def listar_fichas():
+    fichas = FichaInscripcion.query.order_by(FichaInscripcion.fecha_registro.desc()).all()
+    entidades = get_entidades_permitidas()
+    return render_template('fichas.html', fichas=fichas, entidades=entidades)
+
+@app.route('/fichas/nuevo')
+@login_requerido
+def nueva_ficha_form():
+    entidades = get_entidades_permitidas()
+    return render_template('formulario_fichas.html', entidades=entidades)
+
+@app.route('/fichas/editar/<int:id_ficha>')
+@login_requerido
+def editar_ficha_form(id_ficha):
+    ficha = FichaInscripcion.query.get_or_404(id_ficha)
+    entidades = get_entidades_permitidas()
+    return render_template('formulario_fichas.html', entidades=entidades, ficha=ficha)
+
+@app.route('/fichas/actualizar/<int:id_ficha>', methods=['POST'])
+@login_requerido
+def actualizar_ficha(id_ficha):
+    ficha = FichaInscripcion.query.get_or_404(id_ficha)
+    try:
+        ficha.id_entidad_tecnica = request.form.get('id_entidad_tecnica')
+        ficha.correo_contacto = request.form.get('correo_contacto', '')
+        ficha.telefono_contacto = request.form.get('telefono_contacto', '')
+
+        # Predio
+        if not ficha.predio:
+            ficha.predio = FichaPredio(id_ficha=ficha.id_ficha)
+            db.session.add(ficha.predio)
+        ficha.predio.direccion = request.form.get('direccion', '').upper()
+        ficha.predio.departamento = request.form.get('departamento', '').upper()
+        ficha.predio.provincia = request.form.get('provincia', '').upper()
+        ficha.predio.distrito = request.form.get('distrito', '').upper()
+        ficha.predio.manzana = request.form.get('manzana', '').upper()
+        ficha.predio.lote = request.form.get('lote', '').upper()
+        ficha.predio.sublote = request.form.get('sublote', '').upper()
+        ficha.predio.centro_poblado = request.form.get('centro_poblado', '').upper()
+        ficha.predio.referencia = request.form.get('referencia', '').upper()
+
+        # Jefe
+        if not ficha.jefe:
+            ficha.jefe = FichaJefe(id_ficha=ficha.id_ficha)
+            db.session.add(ficha.jefe)
+        ficha.jefe.nombres = request.form.get('nombres_jefe', '').upper()
+        ficha.jefe.ap_paterno = request.form.get('ap_paterno_jefe', '').upper()
+        ficha.jefe.ap_materno = request.form.get('ap_materno_jefe', '').upper()
+        ficha.jefe.dni = request.form.get('dni_jefe', '').upper()
+        ficha.jefe.nacimiento = request.form.get('nacimiento_jefe', '')
+        ficha.jefe.estado_civil = request.form.get('estado_civil_jefe', '').upper()
+        ficha.jefe.grado_instruccion = request.form.get('grado_instruccion', '').upper()
+        ficha.jefe.ocupacion = request.form.get('ocupacion', '').upper()
+        ficha.jefe.discapacidad = request.form.get('discapacidad', '').upper()
+        ficha.jefe.sit_laboral = request.form.get('sit_laboral', '').upper()
+        ficha.jefe.condicion_eco = request.form.get('condicion_eco', '').upper()
+        ficha.jefe.ingreso_mensual = request.form.get('ingreso_mensual', '')
+
+        # Conyuge
+        if not ficha.conyuge:
+            ficha.conyuge = FichaConyuge(id_ficha=ficha.id_ficha)
+            db.session.add(ficha.conyuge)
+        ficha.conyuge.tiene_conyuge = True if request.form.get('checkTieneConyuge') == 'on' or request.form.get('nombres_conyuge') else False
+        ficha.conyuge.nombres = request.form.get('nombres_conyuge', '').upper()
+        ficha.conyuge.ap_paterno = request.form.get('ap_paterno_conyuge', '').upper()
+        ficha.conyuge.ap_materno = request.form.get('ap_materno_conyuge', '').upper()
+        ficha.conyuge.dni = request.form.get('dni_conyuge', '').upper()
+        ficha.conyuge.nacimiento = request.form.get('nacimiento_conyuge', '')
+        ficha.conyuge.estado_civil = request.form.get('estado_civil_conyuge', '').upper()
+        ficha.conyuge.grado_instruccion = request.form.get('grado_instruccion_conyuge', '').upper()
+        ficha.conyuge.ocupacion = request.form.get('ocupacion_conyuge', '').upper()
+        ficha.conyuge.discapacidad = request.form.get('discapacidad_conyuge', '').upper()
+        ficha.conyuge.sit_laboral = request.form.get('sit_laboral_conyuge', '').upper()
+        ficha.conyuge.condicion = request.form.get('condicion_conyuge', '').upper()
+        ficha.conyuge.ingreso_mensual = request.form.get('ingreso_mensual_conyuge', '')
+
+        # Cargas (borramos y re-creamos por simplicidad)
+        for c in ficha.cargas:
+            db.session.delete(c)
+        tiene_carga = True if request.form.get('checkTieneCarga') == 'on' or request.form.get('nombres_carga_1') else False
+        if tiene_carga:
+            for i in range(1, 4):
+                if request.form.get(f'nombres_carga_{i}'):
+                    nueva_carga = FichaCarga(
+                        id_ficha=ficha.id_ficha,
+                        nombres=request.form.get(f'nombres_carga_{i}', '').upper(),
+                        dni=request.form.get(f'dni_carga_{i}', '').upper(),
+                        nacimiento=request.form.get(f'nacimiento_carga_{i}', ''),
+                        vinculo=request.form.get(f'vinculo_carga_{i}', '').upper(),
+                        instruccion=request.form.get(f'instruccion_carga_{i}', '').upper(),
+                        discapacidad=request.form.get(f'discapacidad_carga_{i}', '').upper()
+                    )
+                    db.session.add(nueva_carga)
+
+        # Adicional
+        for a in ficha.adicionales:
+            db.session.delete(a)
+        if request.form.get('nombres_adic_1'):
+            nuevo_adic = FichaAdicional(
+                id_ficha=ficha.id_ficha,
+                nombres=request.form.get('nombres_adic_1', '').upper(),
+                ap_paterno=request.form.get('ap_paterno_adic_1', '').upper(),
+                ap_materno=request.form.get('ap_materno_adic_1', '').upper(),
+                dni=request.form.get('dni_adic_1', '').upper(),
+                vinculo=request.form.get('vinculo_adic_1', '').upper()
+            )
+            db.session.add(nuevo_adic)
+
+        db.session.commit()
+        flash('Ficha de Inscripción actualizada correctamente.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al actualizar la Ficha: {str(e)}', 'danger')
+
+    return redirect(url_for('listar_fichas'))
+
+@app.route('/fichas/crear', methods=['POST'])
+@login_requerido
+def crear_ficha():
+    try:
+        # 1. Crear la cabecera de la ficha
+        nueva_ficha = FichaInscripcion(
+            id_entidad_tecnica=request.form.get('id_entidad_tecnica'),
+            correo_contacto=request.form.get('correo_contacto', ''),
+            telefono_contacto=request.form.get('telefono_contacto', '')
+        )
+        db.session.add(nueva_ficha)
+        db.session.flush() # Para obtener el id_ficha
+
+        # 2. Crear Predio
+        nuevo_predio = FichaPredio(
+            id_ficha=nueva_ficha.id_ficha,
+            direccion=request.form.get('direccion', '').upper(),
+            departamento=request.form.get('departamento', '').upper(),
+            provincia=request.form.get('provincia', '').upper(),
+            distrito=request.form.get('distrito', '').upper(),
+            manzana=request.form.get('manzana', '').upper(),
+            lote=request.form.get('lote', '').upper(),
+            sublote=request.form.get('sublote', '').upper(),
+            centro_poblado=request.form.get('centro_poblado', '').upper(),
+            referencia=request.form.get('referencia', '').upper()
+        )
+        db.session.add(nuevo_predio)
+
+        # 3. Crear Jefe
+        nuevo_jefe = FichaJefe(
+            id_ficha=nueva_ficha.id_ficha,
+            nombres=request.form.get('nombres_jefe', '').upper(),
+            ap_paterno=request.form.get('ap_paterno_jefe', '').upper(),
+            ap_materno=request.form.get('ap_materno_jefe', '').upper(),
+            dni=request.form.get('dni_jefe', '').upper(),
+            nacimiento=request.form.get('nacimiento_jefe', ''),
+            estado_civil=request.form.get('estado_civil_jefe', '').upper(),
+            grado_instruccion=request.form.get('grado_instruccion', '').upper(),
+            ocupacion=request.form.get('ocupacion', '').upper(),
+            discapacidad=request.form.get('discapacidad', '').upper(),
+            sit_laboral=request.form.get('sit_laboral', '').upper(),
+            condicion_eco=request.form.get('condicion_eco', '').upper(),
+            ingreso_mensual=request.form.get('ingreso_mensual', '')
+        )
+        db.session.add(nuevo_jefe)
+
+        # 4. Crear Conyuge
+        nuevo_conyuge = FichaConyuge(
+            id_ficha=nueva_ficha.id_ficha,
+            tiene_conyuge=True if request.form.get('checkTieneConyuge') == 'on' or request.form.get('nombres_conyuge') else False,
+            nombres=request.form.get('nombres_conyuge', '').upper(),
+            ap_paterno=request.form.get('ap_paterno_conyuge', '').upper(),
+            ap_materno=request.form.get('ap_materno_conyuge', '').upper(),
+            dni=request.form.get('dni_conyuge', '').upper(),
+            nacimiento=request.form.get('nacimiento_conyuge', ''),
+            estado_civil=request.form.get('estado_civil_conyuge', '').upper(),
+            grado_instruccion=request.form.get('grado_instruccion_conyuge', '').upper(),
+            ocupacion=request.form.get('ocupacion_conyuge', '').upper(),
+            discapacidad=request.form.get('discapacidad_conyuge', '').upper(),
+            sit_laboral=request.form.get('sit_laboral_conyuge', '').upper(),
+            condicion=request.form.get('condicion_conyuge', '').upper(),
+            ingreso_mensual=request.form.get('ingreso_mensual_conyuge', '')
+        )
+        db.session.add(nuevo_conyuge)
+
+        # 5. Crear Cargas
+        tiene_carga = True if request.form.get('checkTieneCarga') == 'on' or request.form.get('nombres_carga_1') else False
+        if tiene_carga:
+            for i in range(1, 4):
+                if request.form.get(f'nombres_carga_{i}'):
+                    nueva_carga = FichaCarga(
+                        id_ficha=nueva_ficha.id_ficha,
+                        nombres=request.form.get(f'nombres_carga_{i}', '').upper(),
+                        dni=request.form.get(f'dni_carga_{i}', '').upper(),
+                        nacimiento=request.form.get(f'nacimiento_carga_{i}', ''),
+                        vinculo=request.form.get(f'vinculo_carga_{i}', '').upper(),
+                        instruccion=request.form.get(f'instruccion_carga_{i}', '').upper(),
+                        discapacidad=request.form.get(f'discapacidad_carga_{i}', '').upper()
+                    )
+                    db.session.add(nueva_carga)
+
+        # 6. Crear Adicional
+        if request.form.get('nombres_adic_1'):
+            nuevo_adic = FichaAdicional(
+                id_ficha=nueva_ficha.id_ficha,
+                nombres=request.form.get('nombres_adic_1', '').upper(),
+                ap_paterno=request.form.get('ap_paterno_adic_1', '').upper(),
+                ap_materno=request.form.get('ap_materno_adic_1', '').upper(),
+                dni=request.form.get('dni_adic_1', '').upper(),
+                vinculo=request.form.get('vinculo_adic_1', '').upper()
+            )
+            db.session.add(nuevo_adic)
+        
+        db.session.commit()
+        flash('Ficha de Inscripción guardada correctamente en BD Normalizada.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al guardar la Ficha: {str(e)}', 'danger')
+        
+    return redirect(url_for('listar_fichas'))
+
+@app.route('/fichas/eliminar/<int:id>', methods=['POST'])
+@login_requerido
+def eliminar_ficha(id):
+    ficha = FichaInscripcion.query.get_or_404(id)
+    try:
+        db.session.delete(ficha)
+        db.session.commit()
+        flash('Ficha de Inscripción eliminada correctamente.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al eliminar la ficha: {str(e)}', 'danger')
+        
+    return redirect(url_for('listar_fichas'))
 
 if __name__ == '__main__':
     app.run(debug=True)

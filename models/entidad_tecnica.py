@@ -13,6 +13,7 @@ class EntidadTecnica(db.Model):
     # Relationships
     representante_legal = db.relationship('Persona', backref=db.backref('entidades_representadas', lazy=True))
     registros = db.relationship('RegistroET', backref='entidad_tecnica', cascade="all, delete-orphan")
+    fichas = db.relationship('FichaInscripcion', backref='entidad_tecnica', cascade="all, delete-orphan")
     ingeniero_vigente = db.relationship('Ingeniero', foreign_keys=[id_ingeniero_vigente])
 
     @property

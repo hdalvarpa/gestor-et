@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Gestión de Fichas de Inscripción</h2>
+    <a href="/fichas/nuevo" class="btn btn-primary">
+        ➕ Nueva Ficha de Inscripción
+    </a>
+</div>
+
+<!-- Mensajes Flash -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+<div class="card shadow-sm border-0 bg-dark bg-opacity-50">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-dark table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th scope="col">ID</th>
+                        <th scope="col">Entidad Técnica</th>
+                        <th scope="col">Jefe de Familia</th>
+                        <th scope="col">DNI</th>
+                        <th scope="col">Ubicación (Distrito)</th>
+                        <th scope="col">Fecha Registro</th>
+                        <th scope="col" class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ficha in fichas %}
+                    <tr>
+                        <td>{{ ficha.id_ficha }}</td>
+                        <td>
+                            {% if ficha.entidad_tecnica %}
+                                <strong>{{ ficha.entidad_tecnica.razon_social }}</strong>
+                            {% else %}
+                                <span class="text-muted">N/A</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ ficha.jefe.nombres if ficha.jefe else '' }} {{ ficha.jefe.ap_paterno if ficha.jefe else '' }} {{ ficha.jefe.ap_materno if ficha.jefe else '' }}</td>
+                        <td>{{ ficha.jefe.dni if ficha.jefe else '' }}</td>
+                        <td>{{ ficha.predio.distrito if ficha.predio else '' }}</td>
+                        <td>{{ ficha.fecha_registro.strftime('%d/%m/%Y %H:%M') if ficha.fecha_registro else '' }}</td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-outline-success me-1" data-bs-toggle="modal" data-bs-target="#modalVer-{{ ficha.id_ficha }}" title="Ver Detalles">
+                                👁 Ver
+                            </button>
+                            <a href="/fichas/editar/{{ ficha.id_ficha }}" class="btn btn-sm btn-outline-warning me-1" title="Editar Ficha">
+                                ✏️ Editar
+                            </a>
+                            <form action="/generar/{{ ficha.id_ficha }}" method="POST" class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-outline-info me-1" title="Generar PDF">
+                                    📄 PDF
+                                </button>
+                            </form>
+                            <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalEliminar-{{ ficha.id_ficha }}">
+                                🗑️ Eliminar
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if not fichas %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">No hay Fichas de Inscripción registradas.</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% for ficha in fichas %}
+<!-- Modal Eliminar -->
+<div class="modal fade" id="modalEliminar-{{ ficha.id_ficha }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form action="/fichas/eliminar/{{ ficha.id_ficha }}" method="POST">
+            <div class="modal-content text-dark">
+                <div class="modal-header">
+                    <h5 class="modal-title text-danger">⚠️ Confirmar Eliminación</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-start">
+                    <p>¿Estás seguro de que deseas eliminar la ficha de <strong>{{ ficha.jefe.nombres if ficha.jefe else 'esta persona' }} {{ ficha.jefe.ap_paterno if ficha.jefe else '' }}</strong> (DNI: {{ ficha.jefe.dni if ficha.jefe else 'N/A' }})?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger">Sí, Eliminar</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Ver -->
+<div class="modal fade" id="modalVer-{{ ficha.id_ficha }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content text-dark">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">👁 Detalles de Ficha N° {{ ficha.id_ficha }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-start">
+                <h6 class="border-bottom pb-2 text-primary">Información General</h6>
+                <div class="row mb-3">
+                    <div class="col-md-6"><p class="mb-1"><strong>Entidad Técnica:</strong> {{ ficha.entidad_tecnica.razon_social if ficha.entidad_tecnica else 'N/A' }}</p></div>
+                    <div class="col-md-6"><p class="mb-1"><strong>Contacto:</strong> Correo: {{ ficha.correo_contacto }} | Tel: {{ ficha.telefono_contacto }}</p></div>
+                </div>
+
+                <h6 class="border-bottom pb-2 text-primary mt-3">Predio</h6>
+                <div class="row mb-3">
+                    <div class="col-md-12"><p class="mb-1"><strong>Dirección:</strong> {{ ficha.predio.direccion if ficha.predio else '' }}</p></div>
+                    <div class="col-md-4"><p class="mb-1"><strong>Dpto:</strong> {{ ficha.predio.departamento if ficha.predio else '' }}</p></div>
+                    <div class="col-md-4"><p class="mb-1"><strong>Prov:</strong> {{ ficha.predio.provincia if ficha.predio else '' }}</p></div>
+                    <div class="col-md-4"><p class="mb-1"><strong>Dist:</strong> {{ ficha.predio.distrito if ficha.predio else '' }}</p></div>
+                    <div class="col-md-3"><p class="mb-1"><strong>Mz:</strong> {{ ficha.predio.manzana if ficha.predio else '' }}</p></div>
+                    <div class="col-md-3"><p class="mb-1"><strong>Lt:</strong> {{ ficha.predio.lote if ficha.predio else '' }}</p></div>
+                    <div class="col-md-3"><p class="mb-1"><strong>SubLt:</strong> {{ ficha.predio.sublote if ficha.predio else '' }}</p></div>
+                    <div class="col-md-12"><p class="mb-1"><strong>C. Poblado:</strong> {{ ficha.predio.centro_poblado if ficha.predio else '' }}</p></div>
+                    <div class="col-md-12"><p class="mb-1"><strong>Referencia:</strong> {{ ficha.predio.referencia if ficha.predio else '' }}</p></div>
+                </div>
+
+                <h6 class="border-bottom pb-2 text-primary mt-3">Jefe de Familia</h6>
+                <div class="row mb-3">
+                    <div class="col-md-8"><p class="mb-1"><strong>Nombre:</strong> {{ ficha.jefe.nombres if ficha.jefe else '' }} {{ ficha.jefe.ap_paterno if ficha.jefe else '' }} {{ ficha.jefe.ap_materno if ficha.jefe else '' }}</p></div>
+                    <div class="col-md-4"><p class="mb-1"><strong>DNI:</strong> {{ ficha.jefe.dni if ficha.jefe else '' }}</p></div>
+                    <div class="col-md-4"><p class="mb-1"><strong>Nacimiento:</strong> {{ ficha.jefe.nacimiento if ficha.jefe else '' }}</p></div>
+                    <div class="col-md-4"><p class="mb-1"><strong>Est. Civil:</strong> {{ ficha.jefe.estado_civil if ficha.jefe else '' }}</p></div>
+                    <div class="col-md-4"><p class="mb-1"><strong>Instrucción:</strong> {{ ficha.jefe.grado_instruccion if ficha.jefe else '' }}</p></div>
+                    <div class="col-md-6"><p class="mb-1"><strong>Ocupación:</strong> {{ ficha.jefe.ocupacion if ficha.jefe else '' }}</p></div>
+                    <div class="col-md-6"><p class="mb-1"><strong>Discapacidad:</strong> {{ ficha.jefe.discapacidad if ficha.jefe else '' }}</p></div>
+                    <div class="col-md-4"><p class="mb-1"><strong>Sit. Laboral:</strong> {{ ficha.jefe.sit_laboral if ficha.jefe else '' }}</p></div>
+                    <div class="col-md-4"><p class="mb-1"><strong>Condición Eco:</strong> {{ ficha.jefe.condicion_eco if ficha.jefe else '' }}</p></div>
+                    <div class="col-md-4"><p class="mb-1"><strong>Ingreso:</strong> S/ {{ ficha.jefe.ingreso_mensual if ficha.jefe else '' }}</p></div>
+                </div>
+
+                <h6 class="border-bottom pb-2 text-primary mt-3">Cónyuge</h6>
+                {% if ficha.conyuge and ficha.conyuge.nombres %}
+                <div class="row mb-3">
+                    <div class="col-md-8"><p class="mb-1"><strong>Nombre:</strong> {{ ficha.conyuge.nombres }} {{ ficha.conyuge.ap_paterno }} {{ ficha.conyuge.ap_materno }}</p></div>
+                    <div class="col-md-4"><p class="mb-1"><strong>DNI:</strong> {{ ficha.conyuge.dni }}</p></div>
+                    <div class="col-md-4"><p class="mb-1"><strong>Nacimiento:</strong> {{ ficha.conyuge.nacimiento }}</p></div>
+                    <div class="col-md-4"><p class="mb-1"><strong>Est. Civil:</strong> {{ ficha.conyuge.estado_civil }}</p></div>
+                    <div class="col-md-4"><p class="mb-1"><strong>Instrucción:</strong> {{ ficha.conyuge.grado_instruccion }}</p></div>
+                    <div class="col-md-6"><p class="mb-1"><strong>Ocupación:</strong> {{ ficha.conyuge.ocupacion }}</p></div>
+                    <div class="col-md-6"><p class="mb-1"><strong>Discapacidad:</strong> {{ ficha.conyuge.discapacidad }}</p></div>
+                    <div class="col-md-4"><p class="mb-1"><strong>Sit. Laboral:</strong> {{ ficha.conyuge.sit_laboral }}</p></div>
+                    <div class="col-md-4"><p class="mb-1"><strong>Condición:</strong> {{ ficha.conyuge.condicion }}</p></div>
+                    <div class="col-md-4"><p class="mb-1"><strong>Ingreso:</strong> S/ {{ ficha.conyuge.ingreso_mensual }}</p></div>
+                </div>
+                {% else %}
+                <p class="text-muted">Sin cónyuge registrado.</p>
+                {% endif %}
+
+                <h6 class="border-bottom pb-2 text-primary mt-3">Cargas Familiares</h6>
+                {% if ficha.cargas %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered">
+                        <thead class="table-light"><tr><th>Nombre</th><th>DNI</th><th>Nacimiento</th><th>Vínculo</th><th>Instrucción</th><th>Discapacidad</th></tr></thead>
+                        <tbody>
+                            {% for carga in ficha.cargas %}
+                            <tr>
+                                <td>{{ carga.nombres }}</td><td>{{ carga.dni }}</td><td>{{ carga.nacimiento }}</td>
+                                <td>{{ carga.vinculo }}</td><td>{{ carga.instruccion }}</td><td>{{ carga.discapacidad }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">Sin cargas registradas.</p>
+                {% endif %}
+
+                <h6 class="border-bottom pb-2 text-primary mt-3">Familiar Adicional / Representante</h6>
+                {% if ficha.adicionales %}
+                <ul class="mb-0">
+                    {% for adic in ficha.adicionales %}
+                    <li><strong>{{ adic.nombres }} {{ adic.ap_paterno }} {{ adic.ap_materno }}</strong> (DNI: {{ adic.dni }} - Vínculo: {{ adic.vinculo }})</li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-muted">Sin familiares adicionales registrados.</p>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{% endblock %}

@@ -3,10 +3,19 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2>Asignar Entidades a Usuarios</h2>
-    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevaAsignacionUsuario">
-        ➕ Vincular Usuario y Entidad
-    </button>
 </div>
+
+<!-- Mensajes Flash (Errores/Éxitos) -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
 
 <div class="card bg-dark bg-opacity-50 border-0 shadow-lg">
     <div class="card-body">
@@ -16,46 +25,43 @@
                     <tr>
                         <th>ID</th>
                         <th>Usuario (Username)</th>
-                        <th>Rol</th>
                         <th>Entidades Técnicas a Cargo</th>
+                        <th class="text-end">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for usuario in usuarios %}
-                        {% if usuario.entidades|length > 0 or usuario.rol == 'ADMIN' %}
                         <tr>
                             <td>{{ usuario.id }}</td>
                             <td>
                                 <strong>{{ usuario.username }}</strong><br>
-                                <small class="text-light opacity-75">{{ usuario.persona.nombres }} {{ usuario.persona.apellido_paterno }}</small>
+                                <small class="text-light opacity-75">{{ usuario.persona.nombres if usuario.persona else '' }} {{ usuario.persona.apellido_paterno if usuario.persona else '' }}</small>
                             </td>
                             <td>
-                                {% if usuario.rol == 'ADMIN' %}
-                                    <span class="badge bg-danger">ADMINISTRADOR</span>
-                                {% else %}
-                                    <span class="badge bg-info">USUARIO</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if usuario.rol == 'ADMIN' %}
-                                    <span class="text-light opacity-75 fst-italic">Tiene acceso a todas las entidades por defecto</span>
-                                {% elif usuario.entidades|length == 0 %}
-                                    <span class="text-light opacity-75 fst-italic">Sin entidades asignadas</span>
-                                {% else %}
-                                    <div class="d-flex flex-wrap gap-2">
+                                <div class="d-flex flex-wrap gap-2 align-items-center">
+                                    {% if usuario.entidades|length == 0 %}
+                                        <span class="text-light opacity-75 fst-italic">Sin entidades asignadas</span>
+                                    {% else %}
                                         {% for entidad in usuario.entidades %}
-                                            <div class="badge bg-secondary px-3 py-2 d-flex align-items-center gap-2">
-                                                <span>{{ entidad.razon_social }} (RUC: {{ entidad.ruc }})</span>
-                                                <form action="/asignacion_usuarios/eliminar/{{ usuario.id }}/{{ entidad.id_entidad_tecnica }}" method="POST" style="margin: 0; padding: 0;">
-                                                    <button type="submit" class="btn-close btn-close-white" style="font-size: 0.5rem;" title="Quitar acceso" onclick="return confirm('¿Está seguro de quitar el acceso a esta entidad?');"></button>
+                                            <div class="badge bg-primary bg-opacity-25 border border-primary text-light px-3 py-2 d-flex align-items-center gap-2 rounded-pill shadow-sm">
+                                                <span class="fs-6 fw-normal">{{ entidad.razon_social }} (RUC: {{ entidad.ruc }})</span>
+                                                <form action="/asignacion_usuarios/eliminar/{{ usuario.id }}/{{ entidad.id_entidad_tecnica }}" method="POST" style="margin: 0; padding: 0; display: flex;">
+                                                    <button type="submit" class="btn btn-danger btn-sm rounded-circle d-flex align-items-center justify-content-center p-0 shadow-sm" style="width: 22px; height: 22px; margin-left: 4px;" title="Quitar acceso" onclick="return confirm('¿Está seguro de quitar el acceso a esta entidad?');">
+                                                        <span style="font-size: 0.75rem; font-weight: bold; line-height: 1;">&times;</span>
+                                                    </button>
                                                 </form>
                                             </div>
                                         {% endfor %}
-                                    </div>
-                                {% endif %}
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td class="text-end">
+                                <!-- Botón para asignar nueva entidad a este usuario -->
+                                <button class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#modalAsignar{{ usuario.id }}">
+                                    ➕ Asignar
+                                </button>
                             </td>
                         </tr>
-                        {% endif %}
                     {% endfor %}
                 </tbody>
             </table>
@@ -63,33 +69,23 @@
     </div>
 </div>
 
-<!-- Modal Nueva Asignación de Usuario -->
-<div class="modal fade" id="modalNuevaAsignacionUsuario" tabindex="-1" aria-hidden="true">
+{% for usuario in usuarios %}
+<!-- Modal Asignar Entidad para {{ usuario.username }} -->
+<div class="modal fade" id="modalAsignar{{ usuario.id }}" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <form action="/asignacion_usuarios/crear" method="POST" class="w-100">
-            <div class="modal-content">
+            <div class="modal-content text-dark">
                 <div class="modal-header">
-                    <h5 class="modal-title">Vincular Usuario y Entidad Técnica</h5>
+                    <h5 class="modal-title">Asignar Entidad a {{ usuario.username }}</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body text-start">
-                    <div class="mb-3">
-                        <label for="id_usuario" class="form-label text-primary">👤 Usuario del Sistema</label>
-                        <select class="form-select" id="id_usuario" name="id_usuario" required>
-                            <option value="">-- Seleccione el usuario --</option>
-                            {% for u in usuarios %}
-                                {% if u.rol != 'ADMIN' %}
-                                <option value="{{ u.id }}">{{ u.username }} - {{ u.persona.nombres }} {{ u.persona.apellido_paterno }}</option>
-                                {% endif %}
-                            {% endfor %}
-                        </select>
-                        <div class="form-text text-light opacity-75 mt-2">Los usuarios Administradores tienen acceso a todas las entidades automáticamente.</div>
-                    </div>
+                    <input type="hidden" name="id_usuario" value="{{ usuario.id }}">
                     
                     <div class="mb-3">
-                        <label for="id_entidad_tecnica" class="form-label text-primary">🏢 Entidad Técnica a cargo</label>
-                        <select class="form-select" id="id_entidad_tecnica" name="id_entidad_tecnica" required>
-                            <option value="">-- Seleccione la entidad técnica --</option>
+                        <label for="id_entidad_tecnica" class="form-label text-primary">🏢 Seleccione Entidad Técnica</label>
+                        <select class="form-select" name="id_entidad_tecnica" required>
+                            <option value="">-- Seleccione la entidad --</option>
                             {% for e in entidades %}
                                 <option value="{{ e.id_entidad_tecnica }}">{{ e.razon_social }} (RUC: {{ e.ruc }})</option>
                             {% endfor %}
@@ -98,11 +94,12 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">🔗 Vincular Entidad</button>
+                    <button type="submit" class="btn btn-primary">🔗 Asignar Entidad</button>
                 </div>
             </div>
         </form>
     </div>
 </div>
+{% endfor %}
 
 {% endblock %}

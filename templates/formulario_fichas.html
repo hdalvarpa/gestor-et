@@ -4,11 +4,24 @@
 
 <div class="card">
     <div class="card-header">
-        <h4 class="mb-0 fw-bold">Generar Nuevo PDF</h4>
+        <h4 class="mb-0 fw-bold">{{ "Editar Ficha de Inscripción" if ficha else "Generar Nuevo PDF" }}</h4>
     </div>
     <div class="card-body">
 
-        <form action="/generar_rapido" method="POST" onkeydown="return event.key != 'Enter';">
+        <form action="{{ '/fichas/actualizar/' ~ ficha.id_ficha if ficha else '/fichas/crear' }}" method="POST" onkeydown="return event.key != 'Enter';">
+
+            <h5 class="mb-3 border-bottom pb-2 text-primary">0. Entidad Técnica a Cargo</h5>
+            <div class="row mb-4">
+                <div class="col-12">
+                    <label class="form-label fw-bold">Seleccione la Entidad Técnica</label>
+                    <select class="form-select" name="id_entidad_tecnica" required>
+                        <option value="">-- Seleccione una Entidad --</option>
+                        {% for e in entidades %}
+                            <option value="{{ e.id_entidad_tecnica }}" {% if ficha and ficha.id_entidad_tecnica == e.id_entidad_tecnica %}selected{% endif %}>{{ e.razon_social }} (RUC: {{ e.ruc }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
 
             <h5 class="mb-3 border-bottom pb-2 text-primary">1. Información General del Predio</h5>
 
@@ -16,45 +29,45 @@
                 <div class="col-12 mb-3">
                     <label class="form-label fw-bold">Dirección</label>
                     <input type="text" class="form-control" name="direccion"
-                        oninput="this.value = this.value.toUpperCase()">
+                        oninput="this.value = this.value.toUpperCase()" value="{{ ficha.predio.direccion if ficha and ficha.predio else '' }}">
                 </div>
             </div>
 
             <div class="row">
                 <div class="col-md-4 mb-3">
                     <label class="form-label fw-bold">Departamento</label>
-                    <input type="text" class="form-control" name="departamento" value="LA LIBERTAD">
+                    <input type="text" class="form-control" name="departamento" value="{{ ficha.predio.departamento if ficha and ficha.predio else '' }}">
                 </div>
                 <div class="col-md-4 mb-3">
                     <label class="form-label fw-bold">Provincia</label>
-                    <input type="text" class="form-control" name="provincia" value="TRUJILLO">
+                    <input type="text" class="form-control" name="provincia" value="{{ ficha.predio.provincia if ficha and ficha.predio else '' }}">
                 </div>
                 <div class="col-md-4 mb-3">
                     <label class="form-label fw-bold">Distrito</label>
-                    <input type="text" class="form-control" name="distrito">
+                    <input type="text" class="form-control" name="distrito" value="{{ ficha.predio.distrito if ficha and ficha.predio else '' }}">
                 </div>
             </div>
 
             <div class="row">
                 <div class="col-md-2 mb-3">
                     <label class="form-label fw-bold">Manzana</label>
-                    <input type="text" class="form-control" name="manzana">
+                    <input type="text" class="form-control" name="manzana" value="{{ ficha.predio.manzana if ficha and ficha.predio else '' }}">
                 </div>
                 <div class="col-md-2 mb-3">
                     <label class="form-label fw-bold">Lote</label>
-                    <input type="text" class="form-control" name="lote">
+                    <input type="text" class="form-control" name="lote" value="{{ ficha.predio.lote if ficha and ficha.predio else '' }}">
                 </div>
                 <div class="col-md-2 mb-3">
                     <label class="form-label fw-bold">Sublote</label>
-                    <input type="text" class="form-control" name="sublote">
+                    <input type="text" class="form-control" name="sublote" value="{{ ficha.predio.sublote if ficha and ficha.predio else '' }}">
                 </div>
                 <div class="col-md-3 mb-3">
                     <label class="form-label fw-bold">Centro Poblado</label>
-                    <input type="text" class="form-control" name="centro_poblado">
+                    <input type="text" class="form-control" name="centro_poblado" value="{{ ficha.predio.centro_poblado if ficha and ficha.predio else '' }}">
                 </div>
                 <div class="col-md-3 mb-3">
                     <label class="form-label fw-bold">Referencia</label>
-                    <input type="text" class="form-control" name="referencia">
+                    <input type="text" class="form-control" name="referencia" value="{{ ficha.predio.referencia if ficha and ficha.predio else '' }}">
                 </div>
             </div>
 
@@ -64,36 +77,37 @@
             <div class="row">
                 <div class="col-md-4 mb-3">
                     <label class="form-label fw-bold">Nombre(s)</label>
-                    <input type="text" class="form-control" name="nombres_jefe">
+                    <input type="text" class="form-control" name="nombres_jefe" value="{{ ficha.jefe.nombres if ficha and ficha.jefe else '' }}">
                 </div>
                 <div class="col-md-4 mb-3">
                     <label class="form-label fw-bold">Apellido Paterno</label>
-                    <input type="text" class="form-control" name="ap_paterno_jefe">
+                    <input type="text" class="form-control" name="ap_paterno_jefe" value="{{ ficha.jefe.ap_paterno if ficha and ficha.jefe else '' }}">
                 </div>
                 <div class="col-md-4 mb-3">
                     <label class="form-label fw-bold">Apellido Materno</label>
-                    <input type="text" class="form-control" name="ap_materno_jefe">
+                    <input type="text" class="form-control" name="ap_materno_jefe" value="{{ ficha.jefe.ap_materno if ficha and ficha.jefe else '' }}">
                 </div>
             </div>
 
             <div class="row">
                 <div class="col-md-4 mb-3">
                     <label class="form-label fw-bold">N° DNI</label>
-                    <input type="text" class="form-control" name="dni_jefe">
+                    <input type="text" class="form-control" name="dni_jefe" value="{{ ficha.jefe.dni if ficha and ficha.jefe else '' }}">
                 </div>
                 <div class="col-md-4 mb-3">
                     <label class="form-label fw-bold">Fecha de Nacimiento</label>
-                    <input type="date" class="form-control" name="nacimiento_jefe">
+                    <input type="date" class="form-control" name="nacimiento_jefe" value="{{ ficha.jefe.nacimiento if ficha and ficha.jefe else '' }}">
                 </div>
                 <div class="col-md-4 mb-3">
                     <label class="form-label fw-bold">Estado Civil</label>
-                    <select class="form-select" name="estado_civil_jefe">
+                    {% set ecj = ficha.jefe.estado_civil if ficha and ficha.jefe else "" %}
+<select class="form-select" name="estado_civil_jefe">
                         <option value="">Seleccione...</option>
-                        <option value="SOLTERO">SOLTERO(A)</option>
-                        <option value="CASADO">CASADO(A)</option>
-                        <option value="CONVIVIENTE">CONVIVIENTE</option>
-                        <option value="VIUDO">VIUDO(A)</option>
-                        <option value="DIVORCIADO">DIVORCIADO(A)</option>
+                        <option value="SOLTERO" {% if ecj == "SOLTERO" %}selected{% endif %}>SOLTERO(A)</option>
+                        <option value="CASADO" {% if ecj == "CASADO" %}selected{% endif %}>CASADO(A)</option>
+                        <option value="CONVIVIENTE" {% if ecj == "CONVIVIENTE" %}selected{% endif %}>CONVIVIENTE</option>
+                        <option value="VIUDO" {% if ecj == "VIUDO" %}selected{% endif %}>VIUDO(A)</option>
+                        <option value="DIVORCIADO" {% if ecj == "DIVORCIADO" %}selected{% endif %}>DIVORCIADO(A)</option>
                     </select>
                 </div>
             </div>
@@ -101,21 +115,21 @@
             <div class="row">
                 <div class="col-md-4 mb-3">
                     <label class="form-label fw-bold">Grado de Instrucción</label>
-                    <input type="text" class="form-control" name="grado_instruccion">
+                    <input type="text" class="form-control" name="grado_instruccion" value="{{ ficha.jefe.grado_instruccion if ficha and ficha.jefe else '' }}">
                 </div>
                 <div class="col-md-4 mb-3">
                     <label class="form-label fw-bold">Ocupación</label>
-                    <input type="text" class="form-control" name="ocupacion">
+                    <input type="text" class="form-control" name="ocupacion" value="{{ ficha.jefe.ocupacion if ficha and ficha.jefe else '' }}">
                 </div>
 
                 <div class="col-md-4 mb-3">
                     <label class="form-label fw-bold d-block">Discapacidad</label>
                     <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="discapacidad" value="Permanente" id="disc1">
+                        <input class="form-check-input" type="radio" name="discapacidad" value="Permanente" {% if ficha and ficha.jefe and ficha.jefe.discapacidad == "PERMANENTE" %}checked{% endif %} id="disc1">
                         <label class="form-check-label" for="disc1">Permanente</label>
                     </div>
                     <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="discapacidad" value="Severa" id="disc2">
+                        <input class="form-check-input" type="radio" name="discapacidad" value="Severa" {% if ficha and ficha.jefe and ficha.jefe.discapacidad == "SEVERA" %}checked{% endif %} id="disc2">
                         <label class="form-check-label" for="disc2">Severa</label>
                     </div>
                 </div>
@@ -128,12 +142,12 @@
                     <div class="col-md-4 mb-3">
                         <label class="form-label fw-bold d-block">Situación Laboral</label>
                         <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="sit_laboral" value="Dependiente"
+                            <input class="form-check-input" type="radio" name="sit_laboral" value="Dependiente" {% if ficha and ficha.jefe and ficha.jefe.sit_laboral == "DEPENDIENTE" %}checked{% endif %}
                                 id="sit1">
                             <label class="form-check-label" for="sit1">Dependiente</label>
                         </div>
                         <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="sit_laboral" value="Independiente"
+                            <input class="form-check-input" type="radio" name="sit_laboral" value="Independiente" {% if ficha and ficha.jefe and ficha.jefe.sit_laboral == "INDEPENDIENTE" %}checked{% endif %}
                                 id="sit2">
                             <label class="form-check-label" for="sit2">Independiente</label>
                         </div>
@@ -142,11 +156,11 @@
                     <div class="col-md-4 mb-3">
                         <label class="form-label fw-bold d-block">Condición</label>
                         <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="condicion_eco" value="Formal" id="cond1">
+                            <input class="form-check-input" type="radio" name="condicion_eco" value="Formal" {% if ficha and ficha.jefe and ficha.jefe.condicion_eco == "FORMAL" %}checked{% endif %} id="cond1">
                             <label class="form-check-label" for="cond1">Formal</label>
                         </div>
                         <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="condicion_eco" value="Informal"
+                            <input class="form-check-input" type="radio" name="condicion_eco" value="Informal" {% if ficha and ficha.jefe and ficha.jefe.condicion_eco == "INFORMAL" %}checked{% endif %}
                                 id="cond2">
                             <label class="form-check-label" for="cond2">Informal</label>
                         </div>
@@ -157,7 +171,7 @@
                         <input type="number" step="0.01" class="form-control" name="ingreso_mensual"
                             id="ingreso_mensual"
                             onkeydown="return event.key != '+' && event.key != '-' && event.key != 'e' && event.key != 'E'"
-                            min="0" value="1200.00">
+                            min="0" value="{{ ficha.jefe.ingreso_mensual if ficha and ficha.jefe else '' }}">
                     </div>
                 </div>
             </div>
@@ -169,7 +183,7 @@
                 <h5 class="text-primary mb-0">3. Información General del Cónyuge/Conviviente</h5>
 
                 <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="checkTieneConyuge">
+                    <input class="form-check-input" type="checkbox" id="checkTieneConyuge" name="checkTieneConyuge" {% if ficha and ficha.conyuge and ficha.conyuge.nombres %}checked{% endif %}>
                     <label class="form-check-label fw-bold" for="checkTieneConyuge">¿Tiene Cónyuge?</label>
                 </div>
             </div>
@@ -179,36 +193,37 @@
                 <div class="row">
                     <div class="col-md-4 mb-3">
                         <label class="form-label fw-bold" for="id_nombres_conyuge">Nombre(s)</label>
-                        <input type="text" class="form-control" name="nombres_conyuge" id="id_nombres_conyuge">
+                        <input type="text" class="form-control" name="nombres_conyuge" id="id_nombres_conyuge" value="{{ ficha.conyuge.nombres if ficha and ficha.conyuge else '' }}">
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label fw-bold" for="id_ap_paterno_conyuge">Apellido Paterno</label>
-                        <input type="text" class="form-control" name="ap_paterno_conyuge" id="id_ap_paterno_conyuge">
+                        <input type="text" class="form-control" name="ap_paterno_conyuge" id="id_ap_paterno_conyuge" value="{{ ficha.conyuge.ap_paterno if ficha and ficha.conyuge else '' }}">
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label fw-bold" for="id_ap_materno_conyuge">Apellido Materno</label>
-                        <input type="text" class="form-control" name="ap_materno_conyuge" id="id_ap_materno_conyuge">
+                        <input type="text" class="form-control" name="ap_materno_conyuge" id="id_ap_materno_conyuge" value="{{ ficha.conyuge.ap_materno if ficha and ficha.conyuge else '' }}">
                     </div>
                 </div>
 
                 <div class="row">
                     <div class="col-md-4 mb-3">
                         <label class="form-label fw-bold" for="id_dni_conyuge">N° DNI</label>
-                        <input type="text" class="form-control" name="dni_conyuge" id="id_dni_conyuge">
+                        <input type="text" class="form-control" name="dni_conyuge" id="id_dni_conyuge" value="{{ ficha.conyuge.dni if ficha and ficha.conyuge else '' }}">
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label fw-bold" for="id_nacimiento_conyuge">Fecha de Nacimiento</label>
-                        <input type="date" class="form-control" name="nacimiento_conyuge" id="id_nacimiento_conyuge">
+                        <input type="date" class="form-control" name="nacimiento_conyuge" id="id_nacimiento_conyuge" value="{{ ficha.conyuge.nacimiento if ficha and ficha.conyuge else '' }}">
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label fw-bold" for="id_civil_conyuge">Estado Civil</label>
-                        <select class="form-select" name="estado_civil_conyuge" id="id_civil_conyuge">
+                        {% set ecc = ficha.conyuge.estado_civil if ficha and ficha.conyuge else "" %}
+<select class="form-select" name="estado_civil_conyuge" id="id_civil_conyuge">
                             <option value="">Seleccione...</option>
-                            <option value="SOLTERO">SOLTERO(A)</option>
-                            <option value="CASADO">CASADO(A)</option>
-                            <option value="CONVIVIENTE">CONVIVIENTE</option>
-                            <option value="VIUDO">VIUDO(A)</option>
-                            <option value="DIVORCIADO">DIVORCIADO(A)</option>
+                            <option value="SOLTERO" {% if ecj == "SOLTERO" %}selected{% endif %}>SOLTERO(A)</option>
+                            <option value="CASADO" {% if ecj == "CASADO" %}selected{% endif %}>CASADO(A)</option>
+                            <option value="CONVIVIENTE" {% if ecj == "CONVIVIENTE" %}selected{% endif %}>CONVIVIENTE</option>
+                            <option value="VIUDO" {% if ecj == "VIUDO" %}selected{% endif %}>VIUDO(A)</option>
+                            <option value="DIVORCIADO" {% if ecj == "DIVORCIADO" %}selected{% endif %}>DIVORCIADO(A)</option>
                         </select>
                     </div>
                 </div>
@@ -217,23 +232,23 @@
                     <div class="col-md-4 mb-3">
                         <label class="form-label fw-bold" for="id_instruccion_conyuge">Grado de Instrucción</label>
                         <input type="text" class="form-control" name="grado_instruccion_conyuge"
-                            id="id_instruccion_conyuge">
+                            id="id_instruccion_conyuge" value="{{ ficha.conyuge.grado_instruccion if ficha and ficha.conyuge else '' }}">
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label fw-bold" for="id_ocupacion_conyuge">Ocupación</label>
-                        <input type="text" class="form-control" name="ocupacion_conyuge" id="id_ocupacion_conyuge">
+                        <input type="text" class="form-control" name="ocupacion_conyuge" id="id_ocupacion_conyuge" value="{{ ficha.conyuge.ocupacion if ficha and ficha.conyuge else '' }}">
                     </div>
 
                     <div class="col-md-4 mb-3">
                         <span class="form-label fw-bold d-block">Discapacidad</span>
                         <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="discapacidad_conyuge" value="Permanente"
-                                id="disc_c_per">
+                            <input class="form-check-input" type="radio" name="discapacidad_conyuge"
+                                id="disc_c_per" value="Permanente" {% if ficha and ficha.conyuge and ficha.conyuge.discapacidad == "PERMANENTE" %}checked{% endif %}>
                             <label class="form-check-label" for="disc_c_per">Permanente</label>
                         </div>
                         <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="discapacidad_conyuge" value="Severa"
-                                id="disc_c_sev">
+                            <input class="form-check-input" type="radio" name="discapacidad_conyuge"
+                                id="disc_c_sev" value="Severa" {% if ficha and ficha.conyuge and ficha.conyuge.discapacidad == "SEVERA" %}checked{% endif %}>
                             <label class="form-check-label" for="disc_c_sev">Severa</label>
                         </div>
                     </div>
@@ -247,12 +262,12 @@
                             <span class="form-label fw-bold d-block">Situación Laboral</span>
                             <div class="form-check form-check-inline">
                                 <input class="form-check-input" type="radio" name="sit_laboral_conyuge"
-                                    value="Dependiente" id="sit_c_dep">
+                                    id="sit_c_dep" value="Dependiente" {% if ficha and ficha.conyuge and ficha.conyuge.sit_laboral == "DEPENDIENTE" %}checked{% endif %}>
                                 <label class="form-check-label" for="sit_c_dep">Dependiente</label>
                             </div>
                             <div class="form-check form-check-inline">
                                 <input class="form-check-input" type="radio" name="sit_laboral_conyuge"
-                                    value="Independiente" id="sit_c_ind">
+                                    id="sit_c_ind" value="Independiente" {% if ficha and ficha.conyuge and ficha.conyuge.sit_laboral == "INDEPENDIENTE" %}checked{% endif %}>
                                 <label class="form-check-label" for="sit_c_ind">Independiente</label>
                             </div>
                         </div>
@@ -260,13 +275,13 @@
                         <div class="col-md-4 mb-3">
                             <span class="form-label fw-bold d-block">Condición</span>
                             <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="radio" name="condicion_conyuge" value="Formal"
-                                    id="cond_c_for">
+                                <input class="form-check-input" type="radio" name="condicion_conyuge"
+                                    id="cond_c_for" value="Formal" {% if ficha and ficha.conyuge and ficha.conyuge.condicion == "FORMAL" %}checked{% endif %}>
                                 <label class="form-check-label" for="cond_c_for">Formal</label>
                             </div>
                             <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="radio" name="condicion_conyuge" value="Informal"
-                                    id="cond_c_inf">
+                                <input class="form-check-input" type="radio" name="condicion_conyuge"
+                                    id="cond_c_inf" value="Informal" {% if ficha and ficha.conyuge and ficha.conyuge.condicion == "INFORMAL" %}checked{% endif %}>
                                 <label class="form-check-label" for="cond_c_inf">Informal</label>
                             </div>
                         </div>
@@ -276,7 +291,7 @@
                             <input type="number" step="0.01" class="form-control" name="ingreso_mensual_conyuge"
                                 id="id_ingreso_conyuge"
                                 onkeydown="return event.key != '+' && event.key != '-' && event.key != 'e' && event.key != 'E'"
-                                min="0">
+                                min="0" value="{{ ficha.conyuge.ingreso_mensual if ficha and ficha.conyuge else '' }}">
                         </div>
                     </div>
                 </div>
@@ -289,7 +304,7 @@
                 <h5 class="text-primary mb-0">4. Información General de la Carga Familiar</h5>
 
                 <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="checkTieneCarga">
+                    <input class="form-check-input" type="checkbox" id="checkTieneCarga" name="checkTieneCarga" {% if ficha and ficha.cargas|length > 0 %}checked{% endif %}>
                     <label class="form-check-label fw-bold" for="checkTieneCarga">¿Tiene Carga Familiar?</label>
                 </div>
             </div>
@@ -315,24 +330,22 @@
 
                             <tr>
                                 <td class="fw-bold text-center bg-light">01</td>
-                                <td><input type="text" class="form-control form-control-sm" name="nombres_carga_1"></td>
-                                <td><input type="text" class="form-control form-control-sm" name="dni_carga_1"></td>
-                                <td><input type="date" class="form-control form-control-sm" name="nacimiento_carga_1">
+                                <td><input type="text" class="form-control form-control-sm" name="nombres_carga_1" value="{{ ficha.cargas[0].nombres if ficha and ficha.cargas|length > 0 else '' }}"></td>
+                                <td><input type="text" class="form-control form-control-sm" name="dni_carga_1" value="{{ ficha.cargas[0].dni if ficha and ficha.cargas|length > 0 else '' }}"></td>
+                                <td><input type="date" class="form-control form-control-sm" name="nacimiento_carga_1" value="{{ ficha.cargas[0].nacimiento if ficha and ficha.cargas|length > 0 else '' }}">
                                 </td>
-                                <td><input type="text" class="form-control form-control-sm" name="vinculo_carga_1"></td>
-                                <td><input type="text" class="form-control form-control-sm" name="instruccion_carga_1">
+                                <td><input type="text" class="form-control form-control-sm" name="vinculo_carga_1" value="{{ ficha.cargas[0].vinculo if ficha and ficha.cargas|length > 0 else '' }}"></td>
+                                <td><input type="text" class="form-control form-control-sm" name="instruccion_carga_1" value="{{ ficha.cargas[0].instruccion if ficha and ficha.cargas|length > 0 else '' }}">
                                 </td>
                                 <td>
                                     <div class="d-flex flex-column gap-1">
                                         <div class="form-check form-check-inline m-0">
-                                            <input class="form-check-input" type="radio" name="discapacidad_carga_1"
-                                                value="Permanente" id="disc_c1_per">
+                                            <input class="form-check-input" type="radio" name="discapacidad_carga_1" value="Permanente" {% if ficha and ficha.cargas|length > 0 and ficha.cargas[0].discapacidad == "PERMANENTE" %}checked{% endif %} id="disc_c1_per">
                                             <label class="form-check-label" style="font-size: 0.8rem;"
                                                 for="disc_c1_per">Permanente</label>
                                         </div>
                                         <div class="form-check form-check-inline m-0">
-                                            <input class="form-check-input" type="radio" name="discapacidad_carga_1"
-                                                value="Severa" id="disc_c1_sev">
+                                            <input class="form-check-input" type="radio" name="discapacidad_carga_1" value="Severa" {% if ficha and ficha.cargas|length > 0 and ficha.cargas[0].discapacidad == "SEVERA" %}checked{% endif %} id="disc_c1_sev">
                                             <label class="form-check-label" style="font-size: 0.8rem;"
                                                 for="disc_c1_sev">Severa</label>
                                         </div>
@@ -342,24 +355,22 @@
 
                             <tr>
                                 <td class="fw-bold text-center bg-light">02</td>
-                                <td><input type="text" class="form-control form-control-sm" name="nombres_carga_2"></td>
-                                <td><input type="text" class="form-control form-control-sm" name="dni_carga_2"></td>
-                                <td><input type="date" class="form-control form-control-sm" name="nacimiento_carga_2">
+                                <td><input type="text" class="form-control form-control-sm" name="nombres_carga_2" value="{{ ficha.cargas[1].nombres if ficha and ficha.cargas|length > 1 else '' }}"></td>
+                                <td><input type="text" class="form-control form-control-sm" name="dni_carga_2" value="{{ ficha.cargas[1].dni if ficha and ficha.cargas|length > 1 else '' }}"></td>
+                                <td><input type="date" class="form-control form-control-sm" name="nacimiento_carga_2" value="{{ ficha.cargas[1].nacimiento if ficha and ficha.cargas|length > 1 else '' }}">
                                 </td>
-                                <td><input type="text" class="form-control form-control-sm" name="vinculo_carga_2"></td>
-                                <td><input type="text" class="form-control form-control-sm" name="instruccion_carga_2">
+                                <td><input type="text" class="form-control form-control-sm" name="vinculo_carga_2" value="{{ ficha.cargas[1].vinculo if ficha and ficha.cargas|length > 1 else '' }}"></td>
+                                <td><input type="text" class="form-control form-control-sm" name="instruccion_carga_2" value="{{ ficha.cargas[1].instruccion if ficha and ficha.cargas|length > 1 else '' }}">
                                 </td>
                                 <td>
                                     <div class="d-flex flex-column gap-1">
                                         <div class="form-check form-check-inline m-0">
-                                            <input class="form-check-input" type="radio" name="discapacidad_carga_2"
-                                                value="Permanente" id="disc_c2_per">
+                                            <input class="form-check-input" type="radio" name="discapacidad_carga_2" value="Permanente" {% if ficha and ficha.cargas|length > 1 and ficha.cargas[1].discapacidad == "PERMANENTE" %}checked{% endif %} id="disc_c2_per">
                                             <label class="form-check-label" style="font-size: 0.8rem;"
                                                 for="disc_c2_per">Permanente</label>
                                         </div>
                                         <div class="form-check form-check-inline m-0">
-                                            <input class="form-check-input" type="radio" name="discapacidad_carga_2"
-                                                value="Severa" id="disc_c2_sev">
+                                            <input class="form-check-input" type="radio" name="discapacidad_carga_2" value="Severa" {% if ficha and ficha.cargas|length > 1 and ficha.cargas[1].discapacidad == "SEVERA" %}checked{% endif %} id="disc_c2_sev">
                                             <label class="form-check-label" style="font-size: 0.8rem;"
                                                 for="disc_c2_sev">Severa</label>
                                         </div>
@@ -369,24 +380,22 @@
 
                             <tr>
                                 <td class="fw-bold text-center bg-light">03</td>
-                                <td><input type="text" class="form-control form-control-sm" name="nombres_carga_3"></td>
-                                <td><input type="text" class="form-control form-control-sm" name="dni_carga_3"></td>
-                                <td><input type="date" class="form-control form-control-sm" name="nacimiento_carga_3">
+                                <td><input type="text" class="form-control form-control-sm" name="nombres_carga_3" value="{{ ficha.cargas[2].nombres if ficha and ficha.cargas|length > 2 else '' }}"></td>
+                                <td><input type="text" class="form-control form-control-sm" name="dni_carga_3" value="{{ ficha.cargas[2].dni if ficha and ficha.cargas|length > 2 else '' }}"></td>
+                                <td><input type="date" class="form-control form-control-sm" name="nacimiento_carga_3" value="{{ ficha.cargas[2].nacimiento if ficha and ficha.cargas|length > 2 else '' }}">
                                 </td>
-                                <td><input type="text" class="form-control form-control-sm" name="vinculo_carga_3"></td>
-                                <td><input type="text" class="form-control form-control-sm" name="instruccion_carga_3">
+                                <td><input type="text" class="form-control form-control-sm" name="vinculo_carga_3" value="{{ ficha.cargas[2].vinculo if ficha and ficha.cargas|length > 2 else '' }}"></td>
+                                <td><input type="text" class="form-control form-control-sm" name="instruccion_carga_3" value="{{ ficha.cargas[2].instruccion if ficha and ficha.cargas|length > 2 else '' }}">
                                 </td>
                                 <td>
                                     <div class="d-flex flex-column gap-1">
                                         <div class="form-check form-check-inline m-0">
-                                            <input class="form-check-input" type="radio" name="discapacidad_carga_3"
-                                                value="Permanente" id="disc_c3_per">
+                                            <input class="form-check-input" type="radio" name="discapacidad_carga_3" value="Permanente" {% if ficha and ficha.cargas|length > 2 and ficha.cargas[2].discapacidad == "PERMANENTE" %}checked{% endif %} id="disc_c3_per">
                                             <label class="form-check-label" style="font-size: 0.8rem;"
                                                 for="disc_c3_per">Permanente</label>
                                         </div>
                                         <div class="form-check form-check-inline m-0">
-                                            <input class="form-check-input" type="radio" name="discapacidad_carga_3"
-                                                value="Severa" id="disc_c3_sev">
+                                            <input class="form-check-input" type="radio" name="discapacidad_carga_3" value="Severa" {% if ficha and ficha.cargas|length > 2 and ficha.cargas[2].discapacidad == "SEVERA" %}checked{% endif %} id="disc_c3_sev">
                                             <label class="form-check-label" style="font-size: 0.8rem;"
                                                 for="disc_c3_sev">Severa</label>
                                         </div>
@@ -421,19 +430,19 @@
                             <td class="fw-bold text-center bg-light p-2">01</td>
 
                             <td class="p-2">
-                                <input type="text" class="form-control form-control-sm" name="nombres_adic_1">
+                                <input type="text" class="form-control form-control-sm" name="nombres_adic_1" value="{{ ficha.adicionales[0].nombres if ficha and ficha.adicionales|length > 0 else '' }}">
                             </td>
                             <td class="p-2">
-                                <input type="text" class="form-control form-control-sm" name="ap_paterno_adic_1">
+                                <input type="text" class="form-control form-control-sm" name="ap_paterno_adic_1" value="{{ ficha.adicionales[0].ap_paterno if ficha and ficha.adicionales|length > 0 else '' }}">
                             </td>
                             <td class="p-2">
-                                <input type="text" class="form-control form-control-sm" name="ap_materno_adic_1">
+                                <input type="text" class="form-control form-control-sm" name="ap_materno_adic_1" value="{{ ficha.adicionales[0].ap_materno if ficha and ficha.adicionales|length > 0 else '' }}">
                             </td>
                             <td class="p-2">
-                                <input type="text" class="form-control form-control-sm" name="dni_adic_1">
+                                <input type="text" class="form-control form-control-sm" name="dni_adic_1" value="{{ ficha.adicionales[0].dni if ficha and ficha.adicionales|length > 0 else '' }}">
                             </td>
                             <td class="p-2">
-                                <input type="text" class="form-control form-control-sm" name="vinculo_adic_1">
+                                <input type="text" class="form-control form-control-sm" name="vinculo_adic_1" value="{{ ficha.adicionales[0].vinculo if ficha and ficha.adicionales|length > 0 else '' }}">
                             </td>
                         </tr>
 
@@ -460,11 +469,11 @@
                         <tr>
                             <td class="p-2">
                                 <input type="email" class="form-control" name="correo_contacto"
-                                    placeholder="ejemplo@correo.com">
+                                    placeholder="ejemplo@correo.com" value="{{ ficha.correo_contacto if ficha else '' }}">
                             </td>
                             <td class="p-2">
                                 <input type="text" class="form-control" name="telefono_contacto"
-                                    placeholder="999 999 999">
+                                    placeholder="999 999 999" value="{{ ficha.telefono_contacto if ficha else '' }}">
                             </td>
                         </tr>
 
@@ -476,7 +485,7 @@
 
             <div class="mt-4 text-end">
                 <button type="submit" class="btn btn-lg btn-success">
-                    Generar PDF (Sin Guardar)
+                    {{ "Actualizar Ficha de Inscripción" if ficha else "Guardar Ficha de Inscripción" }}
                 </button>
             </div>
         </form>

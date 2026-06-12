@@ -34,7 +34,7 @@
             <tbody>
                 {% for ing in ingenieros %}
                 <tr>
-                    <td><strong>{{ ing.persona.numero_documento }}</strong></td>
+                    <td><strong>{{ ing.persona.dni }}</strong></td>
                     <td><span class="badge bg-primary px-3 py-2" style="font-size: 0.9rem;">CIP: {{ ing.cip }}</span></td>
                     <td>{{ ing.persona.apellido_paterno }} {{ ing.persona.apellido_materno or '' }}, {{ ing.persona.nombres }}</td>
                     <td class="text-end">
