@@ -116,7 +116,7 @@
                     <input type="text" class="form-control" name="dni_jefe"
                         value="{{ ficha.jefe.dni if ficha and ficha.jefe else '' }}" required maxlength="8"
                         minlength="8" pattern="\d{8}"
-                        onkeypress="return event.charCode >= 48 &amp;&amp; event.charCode <= 57">
+                        onkeypress="return event.charCode >= 48 && event.charCode <= 57">
                 </div>
                 <div class="col-md-4 mb-3">
                     <label class="form-label fw-bold">Fecha de Nacimiento</label>
@@ -251,7 +251,7 @@
                         <input type="text" class="form-control" name="dni_conyuge" id="id_dni_conyuge"
                             value="{{ ficha.conyuge.dni if ficha and ficha.conyuge else '' }}" maxlength="8"
                             minlength="8" pattern="\d{8}"
-                            onkeypress="return event.charCode >= 48 &amp;&amp; event.charCode <= 57">
+                            onkeypress="return event.charCode >= 48 && event.charCode <= 57">
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label fw-bold" for="id_nacimiento_conyuge">Fecha de Nacimiento</label>
