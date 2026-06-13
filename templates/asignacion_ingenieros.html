@@ -35,8 +35,8 @@
                     <td><strong>{{ entidad.razon_social }}</strong></td>
                     <td>{{ entidad.ruc }}</td>
                     {% if entidad.ingeniero_vigente %}
-                        <td>{{ entidad.ingeniero_vigente.persona.apellido_paterno }} {{ entidad.ingeniero_vigente.persona.apellido_materno or '' }}, {{ entidad.ingeniero_vigente.persona.nombres }}</td>
-                        <td><span class="badge bg-success">CIP: {{ entidad.ingeniero_vigente.cip }}</span></td>
+                        <td>{{ entidad.ingeniero_vigente.apellido_paterno }} {{ entidad.ingeniero_vigente.apellido_materno or '' }}, {{ entidad.ingeniero_vigente.nombres }}</td>
+                        <td><span class="badge bg-primary px-3 py-2">CIP: {{ entidad.ingeniero_vigente.cip }}</span></td>
                         <td class="text-end">
                             <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalNuevaAsignacion" onclick="abrirModalAsignacion('{{ entidad.id_entidad_tecnica }}', '{{ entidad.razon_social }}')">
                                 ✏️ Cambiar
@@ -91,7 +91,7 @@
                             <option value="">-- Seleccione un Ingeniero --</option>
                             {% for ing in ingenieros %}
                                 <option value="{{ ing.id_ingeniero }}">
-                                    {{ ing.persona.nombres }} {{ ing.persona.apellido_paterno }} (CIP: {{ ing.cip }})
+                                    {{ ing.nombres }} {{ ing.apellido_paterno }} (CIP: {{ ing.cip }})
                                 </option>
                             {% endfor %}
                         </select>

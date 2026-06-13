@@ -7,11 +7,14 @@ class EntidadTecnica(db.Model):
     ruc = db.Column(db.String(11), unique=True, nullable=False)
     razon_social = db.Column(db.String(150), nullable=False)
     direccion = db.Column(db.String(255))
-    id_representante_legal = db.Column(db.Integer, db.ForeignKey('personas.id_persona'), nullable=False)
+    rep_dni = db.Column(db.String(20), nullable=False)
+    rep_nombres = db.Column(db.String(100), nullable=False)
+    rep_apellido_paterno = db.Column(db.String(100), nullable=True)
+    rep_apellido_materno = db.Column(db.String(100), nullable=True)
+    
     id_ingeniero_vigente = db.Column(db.Integer, db.ForeignKey('ingenieros.id_ingeniero'), nullable=True)
     
     # Relationships
-    representante_legal = db.relationship('Persona', backref=db.backref('entidades_representadas', lazy=True))
     registros = db.relationship('RegistroET', backref='entidad_tecnica', cascade="all, delete-orphan")
     fichas = db.relationship('FichaInscripcion', backref='entidad_tecnica', cascade="all, delete-orphan")
     ingeniero_vigente = db.relationship('Ingeniero', foreign_keys=[id_ingeniero_vigente])

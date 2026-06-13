@@ -22,7 +22,6 @@ import jinja2
 from werkzeug.security import generate_password_hash, check_password_hash
 from models.database import db
 from models.usuario import Usuario
-from models.persona import Persona
 from models.entidad_tecnica import EntidadTecnica
 from models.ingeniero import Ingeniero
 from models.registro_et import RegistroET
@@ -330,40 +329,16 @@ def crear_usuario():
         flash('Error: El correo electrónico ya está registrado.', 'danger')
     else:
         try:
-            # 1. Verificar si la Persona ya existe
-            persona_existente = Persona.query.filter_by(dni=nuevo_dni).first()
-            
-            if persona_existente:
-                # Si la persona existe, verificar que no tenga ya un usuario
-                if Usuario.query.filter_by(id_persona=persona_existente.id_persona).first():
-                    flash('Error: Esta persona (DNI) ya tiene una cuenta de usuario asignada.', 'danger')
-                    return redirect(url_for('listar_usuarios'))
-                nueva_persona = persona_existente
-            else:
-                # 1. Crear Persona nueva si no existe
-                nueva_persona = Persona(
-                    
-                    dni=nuevo_dni,
-                    nombres=nuevo_nombres.upper(),
-                    apellido_paterno=nuevo_ap_paterno.upper(),
-                    apellido_materno=nuevo_ap_materno.upper() if nuevo_ap_materno else '',
-                    correo=nuevo_correo
-                )
-                db.session.add(nueva_persona)
-                db.session.flush() # Flush para obtener el id_persona que asigna la BD
-            
-            # 2. Crear Usuario
             hashed_pw = generate_password_hash(nueva_clave)
             nuevo_user = Usuario(
                 username=nuevo_username, 
                 correo_electronico=nuevo_correo, 
-                password_hash=hashed_pw,
-                id_persona=nueva_persona.id_persona
+                password_hash=hashed_pw
             )
             db.session.add(nuevo_user)
             db.session.commit()
             
-            flash(f'Usuario {nuevo_username} y sus datos personales creados exitosamente.', 'success')
+            flash(f'Usuario {nuevo_username} creado exitosamente.', 'success')
         except Exception as e:
             db.session.rollback()
             flash(f'Ocurrió un error al guardar en base de datos: {str(e)}', 'danger')
@@ -699,9 +674,9 @@ def crear_pdf_datos(mi_predio, mi_jefe, mi_conyuge, carga_1, carga_2, carga_3, f
     c.drawString(290, 364, mi_jefe.ap_materno)
     # --- RADIO BUTTONS: SITUACIÓN LABORAL JEFE ---
     c.setFont("Helvetica", 9)
-    if mi_jefe.sit_laboral == 'Dependiente':
+    if (mi_jefe.sit_laboral or '').upper() == 'DEPENDIENTE':
         c.drawString(429.8, 365, "X")
-    elif mi_jefe.sit_laboral == 'Independiente':
+    elif (mi_jefe.sit_laboral or '').upper() == 'INDEPENDIENTE':
         c.drawString(508, 365, "X")
     c.setFont(fonttype_default, sizefont_default)
 
@@ -712,9 +687,9 @@ def crear_pdf_datos(mi_predio, mi_jefe, mi_conyuge, carga_1, carga_2, carga_3, f
     c.drawString(290, 336, mi_jefe.estado_civil) # Select devuelve texto
     # --- RADIO BUTTONS: CONDICIÓN JEFE ---
     c.setFont("Helvetica", 9)
-    if mi_jefe.condicion_eco == 'Formal':
+    if (mi_jefe.condicion_eco or '').upper() == 'FORMAL':
         c.drawString(429.8, 337, "X")
-    elif mi_jefe.condicion_eco == 'Informal':
+    elif (mi_jefe.condicion_eco or '').upper() == 'INFORMAL':
         c.drawString(508, 337, "X")
     c.setFont(fonttype_default, sizefont_default)
 
@@ -722,9 +697,9 @@ def crear_pdf_datos(mi_predio, mi_jefe, mi_conyuge, carga_1, carga_2, carga_3, f
     c.drawString(155, 310, mi_jefe.ocupacion)
     # --- RADIO BUTTONS: DISCAPACIDAD JEFE (Aquí está la lógica de la X) ---
     c.setFont("Helvetica", 9)
-    if mi_jefe.discapacidad == 'Permanente':
+    if (mi_jefe.discapacidad or '').upper() == 'PERMANENTE':
         c.drawString(300.6, 309, "X")
-    elif mi_jefe.discapacidad == 'Severa':
+    elif (mi_jefe.discapacidad or '').upper() == 'SEVERA':
         c.drawString(368.6, 309, "X") 
     c.setFont(fonttype_default, sizefont_default)
 
@@ -736,9 +711,9 @@ def crear_pdf_datos(mi_predio, mi_jefe, mi_conyuge, carga_1, carga_2, carga_3, f
     c.drawString(290, 243, mi_conyuge.ap_materno)
     # --- RADIO BUTTONS: SITUACIÓN LABORAL CÓNYUGE ---
     c.setFont("Helvetica", 9)
-    if mi_conyuge.sit_laboral == 'Dependiente':
+    if (mi_conyuge.sit_laboral or '').upper() == 'DEPENDIENTE':
         c.drawString(429.8, 244, "X")
-    elif mi_conyuge.sit_laboral == 'Independiente':
+    elif (mi_conyuge.sit_laboral or '').upper() == 'INDEPENDIENTE':
         c.drawString(508, 244, "X")
     c.setFont(fonttype_default, sizefont_default)
 
@@ -750,9 +725,9 @@ def crear_pdf_datos(mi_predio, mi_jefe, mi_conyuge, carga_1, carga_2, carga_3, f
     # Radios Cónyuge
     # --- RADIO BUTTONS: CONDICIÓN ECONÓMICA CÓNYUGE ---
     c.setFont("Helvetica", 9)
-    if mi_conyuge.condicion_eco == 'Formal':
+    if (mi_conyuge.condicion_eco or '').upper() == 'FORMAL':
         c.drawString(429.8, 216, "X")
-    elif mi_conyuge.condicion_eco == 'Informal':
+    elif (mi_conyuge.condicion_eco or '').upper() == 'INFORMAL':
         c.drawString(508, 216, "X")
     c.setFont(fonttype_default, sizefont_default)
     
@@ -762,9 +737,9 @@ def crear_pdf_datos(mi_predio, mi_jefe, mi_conyuge, carga_1, carga_2, carga_3, f
 
     # Discapacidad Cónyuge
     c.setFont("Helvetica", 9)
-    if mi_conyuge.discapacidad == 'Permanente':
+    if (mi_conyuge.discapacidad or '').upper() == 'PERMANENTE':
         c.drawString(300.6, 188, "X")
-    elif mi_conyuge.discapacidad == 'Severa':
+    elif (mi_conyuge.discapacidad or '').upper() == 'SEVERA':
         c.drawString(368.6, 188, "X")
     c.setFont(fonttype_default, sizefont_default)
 
@@ -793,9 +768,9 @@ def crear_pdf_datos(mi_predio, mi_jefe, mi_conyuge, carga_1, carga_2, carga_3, f
     c.setFont(fonttype_default, sizefont_default)
 
     c.setFont("Helvetica", 9)
-    if carga_1.discapacidad == 'Permanente':
+    if (carga_1.discapacidad or '').upper() == 'PERMANENTE':
         c.drawString(469.8, 121, "X")
-    elif carga_1.discapacidad == 'Severa':
+    elif (carga_1.discapacidad or '').upper() == 'SEVERA':
         c.drawString(538, 121, "X")
     c.setFont(fonttype_default, sizefont_default)
     
@@ -819,9 +794,9 @@ def crear_pdf_datos(mi_predio, mi_jefe, mi_conyuge, carga_1, carga_2, carga_3, f
     c.setFont(fonttype_default, sizefont_default)
 
     c.setFont("Helvetica", 9)
-    if carga_2.discapacidad == 'Permanente':
+    if (carga_2.discapacidad or '').upper() == 'PERMANENTE':
         c.drawString(469.8, 95.5, "X")
-    elif carga_2.discapacidad == 'Severa':
+    elif (carga_2.discapacidad or '').upper() == 'SEVERA':
         c.drawString(538, 95.5, "X")
     c.setFont(fonttype_default, sizefont_default)
 
@@ -845,9 +820,9 @@ def crear_pdf_datos(mi_predio, mi_jefe, mi_conyuge, carga_1, carga_2, carga_3, f
     c.setFont(fonttype_default, sizefont_default)
 
     c.setFont("Helvetica", 9)
-    if carga_3.discapacidad == 'Permanente':
+    if (carga_3.discapacidad or '').upper() == 'PERMANENTE':
         c.drawString(469.8, 66.5, "X")
-    elif carga_3.discapacidad == 'Severa':
+    elif (carga_3.discapacidad or '').upper() == 'SEVERA':
         c.drawString(538, 66.5, "X")
     c.setFont(fonttype_default, sizefont_default)
 
@@ -906,25 +881,15 @@ def crear_entidad():
         return redirect(url_for('listar_entidades'))
         
     try:
-        # 1. Gestionar Representante Legal (Persona)
-        rep_persona = Persona.query.filter_by(dni=rep_dni).first()
-        if not rep_persona:
-            rep_persona = Persona(
-                 
-                dni=rep_dni, 
-                nombres=rep_nombres.upper(), 
-                apellido_paterno=rep_ap_paterno.upper(),
-                apellido_materno=rep_ap_materno.upper() if rep_ap_materno else ''
-            )
-            db.session.add(rep_persona)
-            db.session.flush()
-            
-        # 2. Crear Entidad Técnica
+        # 1. Crear Entidad Técnica directamente
         nueva_et = EntidadTecnica(
             ruc=ruc,
             razon_social=razon_social.upper(),
             direccion=direccion.upper() if direccion else None,
-            id_representante_legal=rep_persona.id_persona
+            rep_dni=rep_dni,
+            rep_nombres=rep_nombres.upper(),
+            rep_apellido_paterno=rep_ap_paterno.upper(),
+            rep_apellido_materno=rep_ap_materno.upper() if rep_ap_materno else ''
         )
         db.session.add(nueva_et)
         db.session.commit()
@@ -1121,19 +1086,14 @@ def crear_ingeniero():
         return redirect(url_for('listar_ingenieros'))
         
     try:
-        ing_persona = Persona.query.filter_by(dni=ing_dni).first()
-        if not ing_persona:
-            ing_persona = Persona(
-                 
-                dni=ing_dni, 
-                nombres=ing_nombres.upper(), 
-                apellido_paterno=ing_ap_paterno.upper(),
-                apellido_materno=ing_ap_materno.upper() if ing_ap_materno else ''
-            )
-            db.session.add(ing_persona)
-            db.session.flush()
-            
-        ingeniero = Ingeniero(id_persona=ing_persona.id_persona, cip=ing_cip)
+        # Crear Ingeniero directamente
+        ingeniero = Ingeniero(
+            cip=ing_cip,
+            dni=ing_dni,
+            nombres=ing_nombres.upper(),
+            apellido_paterno=ing_ap_paterno.upper(),
+            apellido_materno=ing_ap_materno.upper() if ing_ap_materno else ''
+        )
         db.session.add(ingeniero)
         db.session.commit()
         
@@ -1251,21 +1211,6 @@ def editar_rol(id):
         flash(f'Error al actualizar permisos: {str(e)}', 'danger')
         
     return redirect(url_for('listar_roles'))
-
-from flask import jsonify
-
-@app.route('/api/persona/<dni>')
-def api_buscar_persona(dni):
-    persona = Persona.query.filter_by(dni=dni).first()
-    if persona:
-        return jsonify({
-            'encontrado': True,
-            'nombres': persona.nombres,
-            'apellido_paterno': persona.apellido_paterno,
-            'apellido_materno': persona.apellido_materno,
-            'correo': persona.correo
-        })
-    return jsonify({'encontrado': False})
 
 # ==========================================
 # GESTIÓN DE FICHAS DE INSCRIPCIÓN

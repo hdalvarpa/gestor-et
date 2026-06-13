@@ -1,0 +1,9 @@
+{
+    "estados_civiles": [
+        "SOLTERO",
+        "CASADO",
+        "CONVIVIENTE",
+        "VIUDO",
+        "DIVORCIADO"
+    ]
+}

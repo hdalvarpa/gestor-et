@@ -37,8 +37,8 @@
                     <td><strong>{{ et.ruc }}</strong></td>
                     <td>{{ et.razon_social }}</td>
                     <td>
-                        {{ et.representante_legal.nombres }} {{ et.representante_legal.apellido_paterno }} {{ et.representante_legal.apellido_materno or '' }}
-                        <span class="badge bg-secondary ms-1 fw-normal" style="opacity: 0.8;">DNI: {{ et.representante_legal.dni }}</span>
+                        {{ et.rep_nombres }} {{ et.rep_apellido_paterno }} {{ et.rep_apellido_materno or '' }}
+                        <span class="badge bg-secondary ms-1 fw-normal" style="opacity: 0.8;">DNI: {{ et.rep_dni }}</span>
                     </td>
                     <td class="text-end">
                         <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalEliminar-{{ et.id_entidad_tecnica }}">

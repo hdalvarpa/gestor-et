@@ -647,46 +647,6 @@
                 }
             });
         });
-
-        // Autocompletado de Persona por DNI
-        document.querySelectorAll('input[name$="_dni"]').forEach(dniInput => {
-            dniInput.addEventListener('input', function() {
-                const dni = this.value.trim();
-                const prefix = this.name.split('_dni')[0]; // ej: 'nuevo', 'rep', 'ing'
-                const form = this.closest('form');
-                
-                const nombresInput = form.querySelector(`input[name="${prefix}_nombres"]`);
-                const paternoInput = form.querySelector(`input[name="${prefix}_ap_paterno"]`);
-                const maternoInput = form.querySelector(`input[name="${prefix}_ap_materno"]`);
-                const correoInput = form.querySelector(`input[name="${prefix}_correo"]`);
-                
-                if (dni.length === 8) {
-                    fetch(`/api/persona/${dni}`)
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.encontrado) {
-                                // Rellenar y bloquear
-                                if(nombresInput) { nombresInput.value = data.nombres; nombresInput.readOnly = true; nombresInput.classList.add('bg-light'); }
-                                if(paternoInput) { paternoInput.value = data.apellido_paterno; paternoInput.readOnly = true; paternoInput.classList.add('bg-light'); }
-                                if(maternoInput) { maternoInput.value = data.apellido_materno; maternoInput.readOnly = true; maternoInput.classList.add('bg-light'); }
-                                if(correoInput && data.correo) { correoInput.value = data.correo; correoInput.readOnly = true; correoInput.classList.add('bg-light'); }
-                            } else {
-                                // Desbloquear y limpiar si no se encuentra
-                                if(nombresInput) { nombresInput.readOnly = false; nombresInput.classList.remove('bg-light'); }
-                                if(paternoInput) { paternoInput.readOnly = false; paternoInput.classList.remove('bg-light'); }
-                                if(maternoInput) { maternoInput.readOnly = false; maternoInput.classList.remove('bg-light'); }
-                                if(correoInput) { correoInput.readOnly = false; correoInput.classList.remove('bg-light'); }
-                            }
-                        });
-                } else if (dni.length < 8) {
-                    // Desbloquear si borran el DNI
-                    if(nombresInput) { nombresInput.readOnly = false; nombresInput.classList.remove('bg-light'); }
-                    if(paternoInput) { paternoInput.readOnly = false; paternoInput.classList.remove('bg-light'); }
-                    if(maternoInput) { maternoInput.readOnly = false; maternoInput.classList.remove('bg-light'); }
-                    if(correoInput) { correoInput.readOnly = false; correoInput.classList.remove('bg-light'); }
-                }
-            });
-        });
     </script>
 </body>
 
