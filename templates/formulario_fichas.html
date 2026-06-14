@@ -4,7 +4,7 @@
 
 <div class="card">
     <div class="card-header">
-        <h4 class="mb-0 fw-bold">{{ "Editar Ficha de Inscripción" if ficha else "Generar Nuevo PDF" }}</h4>
+        <h4 class="mb-0 fw-bold">{{ "Actualizar Ficha de Inscripción" if ficha else "Crear Ficha de Inscripción" }}</h4>
     </div>
     <div class="card-body">
 
@@ -115,8 +115,7 @@
                     <label class="form-label fw-bold">N° DNI</label>
                     <input type="text" class="form-control" name="dni_jefe"
                         value="{{ ficha.jefe.dni if ficha and ficha.jefe else '' }}" required maxlength="8"
-                        minlength="8" pattern="\d{8}"
-                        onkeypress="return event.charCode >= 48 && event.charCode <= 57">
+                        minlength="8" pattern="\d{8}" onkeypress="return event.charCode >= 48 && event.charCode <= 57">
                 </div>
                 <div class="col-md-4 mb-3">
                     <label class="form-label fw-bold">Fecha de Nacimiento</label>

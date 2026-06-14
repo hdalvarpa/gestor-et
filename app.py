@@ -1,5 +1,7 @@
+# pyrefly: ignore [missing-import]
 from flask import Flask, render_template, request, send_file, redirect, url_for, session, flash
 from functools import wraps
+# pyrefly: ignore [missing-import]
 from pypdf import PdfReader, PdfWriter
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter, A4
@@ -7,6 +9,7 @@ from datetime import datetime
 import io
 import os
 import zipfile
+# pyrefly: ignore [missing-import]
 from dotenv import load_dotenv
 import pandas as pd
 from models.predio import Predio
@@ -17,8 +20,11 @@ from models.familiar_adicional import FamiliarAdicional
 from models.contacto import Contacto
 from models.empresa import Empresa
 from models.beneficiario import Beneficiario
+# pyrefly: ignore [missing-import]
 from docxtpl import DocxTemplate
+# pyrefly: ignore [missing-import]
 import jinja2
+# pyrefly: ignore [missing-import]
 from werkzeug.security import generate_password_hash, check_password_hash
 from models.database import db
 from models.usuario import Usuario
