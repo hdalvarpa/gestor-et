@@ -370,15 +370,7 @@ def eliminar_usuario(id):
     return redirect(url_for('listar_usuarios'))
 
         
-    try:
-        nuevo_rol = Rol.query.get(id_rol)
-        if nuevo_rol:
-            usuario.id_rol = nuevo_rol.id_rol
-            db.session.commit()
-            flash(f'Rol actualizado para el usuario {usuario.username}.', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Error al cambiar el rol: {str(e)}', 'danger')
+
         
     return redirect(url_for('listar_usuarios'))
 
@@ -1169,48 +1161,9 @@ def eliminar_asignacion_usuario(id_usuario, id_entidad):
     return redirect(url_for('listar_asignaciones_usuarios'))
 
         
-    try:
-        nuevo_rol = Rol(nombre=nombre)
-        # Asignar permisos seleccionados
-        for p_id in permisos_ids:
-            permiso = Permiso.query.get(p_id)
-            if permiso:
-                nuevo_rol.permisos.append(permiso)
-                
-        db.session.add(nuevo_rol)
-        db.session.commit()
-        flash(f'Rol {nombre} creado exitosamente.', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Error al crear rol: {str(e)}', 'danger')
-        
-    return redirect(url_for('listar_roles'))
 
-@app.route('/roles/editar/<int:id>', methods=['POST'])
-def editar_rol(id):
-    rol = Rol.query.get_or_404(id)
-    
-    if rol.nombre == 'SuperAdmin':
-        flash('No se pueden modificar los permisos del rol SuperAdmin por seguridad.', 'danger')
-        return redirect(url_for('listar_roles'))
         
-    permisos_ids = request.form.getlist('permisos')
-    
-    try:
-        # Limpiar permisos actuales y asignar los nuevos
-        rol.permisos = []
-        for p_id in permisos_ids:
-            permiso = Permiso.query.get(p_id)
-            if permiso:
-                rol.permisos.append(permiso)
-                
-        db.session.commit()
-        flash(f'Permisos actualizados para el rol {rol.nombre}.', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Error al actualizar permisos: {str(e)}', 'danger')
-        
-    return redirect(url_for('listar_roles'))
+
 
 # ==========================================
 # GESTIÓN DE FICHAS DE INSCRIPCIÓN
@@ -1448,6 +1401,8 @@ def eliminar_ficha(id):
         flash(f'Error al eliminar la ficha: {str(e)}', 'danger')
         
     return redirect(url_for('listar_fichas'))
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)
