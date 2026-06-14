@@ -1,23 +1,11 @@
 {
     "vinculos": [
-        "HIJO",
-        "HIJA",
-        "NIETO",
-        "NIETA",
         "ABUELO",
-        "ABUELA",
-        "PADRE",
+        "CONYUGE",
+        "HIJO",
         "MADRE",
-        "HERMANO",
-        "HERMANA",
-        "SOBRINO",
-        "SOBRINA",
-        "TIO",
-        "TIA",
-        "SUEGRO",
-        "SUEGRA",
-        "CUÑADO",
-        "CUÑADA",
-        "OTROS"
+        "NIETO",
+        "PADRE",
+        "SUEGRO"
     ]
 }
