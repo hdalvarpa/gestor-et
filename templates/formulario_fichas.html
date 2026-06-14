@@ -658,12 +658,15 @@
                         inputsConyuge.forEach(input => {
                             input.disabled = true;
                             input.required = false;
+                            // NO BORRAR DATOS (A pedido del usuario para evitar pérdida por clics accidentales)
+                            /*
                             if (input.type === 'radio' || input.type === 'checkbox') {
                                 if (input.value === "") input.checked = true;
                                 else input.checked = false;
                             } else {
                                 input.value = '';
                             }
+                            */
                         });
                     }
                 } catch (e) { console.error("Error en toggleConyuge:", e); }
@@ -700,12 +703,15 @@
                     input.disabled = !enable;
                     if (!enable) {
                         input.required = false;
+                        // NO BORRAR DATOS (A pedido del usuario)
+                        /*
                         if (input.type === 'radio') {
                             if (input.value === "") input.checked = true;
                             else input.checked = false;
                         } else {
                             input.value = '';
                         }
+                        */
                     }
                 });
             }

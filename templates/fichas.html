@@ -104,111 +104,275 @@
 <!-- Modal Ver -->
 <div class="modal fade" id="modalVer-{{ ficha.id_ficha }}" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content text-dark">
+        <div class="modal-content text-light">
             <div class="modal-header bg-success text-white">
                 <h5 class="modal-title">👁 Detalles de Ficha N° {{ ficha.id_ficha }}</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body text-start">
-                <h6 class="border-bottom pb-2 text-primary">Información General</h6>
-                <div class="table-responsive">
-                    <table class="table table-sm table-bordered">
-                        <tbody>
-                            <tr><th class="table-secondary w-25">Entidad Técnica</th><td colspan="3">{{ ficha.entidad_tecnica.razon_social if ficha.entidad_tecnica else 'N/A' }}</td></tr>
-                            <tr><th class="table-secondary w-25">Correo Contacto</th><td>{{ ficha.correo_contacto }}</td><th class="table-secondary w-25">Tel. Contacto</th><td>{{ ficha.telefono_contacto }}</td></tr>
-                        </tbody>
-                    </table>
-                </div>
+            <div class="modal-body text-start" style="color: #f1f5f9; max-height: 75vh; overflow-y: auto; padding-right: 15px;">
+                
+                <div class="d-flex flex-column gap-4">
+                    
+                    <!-- SECCIÓN 1: ENTIDAD TÉCNICA -->
+                    <div class="col-12">
+                        <h6 class="fw-bold mb-3 border-bottom border-secondary pb-2" style="color: #10b981;"><i class="bi bi-building"></i> Entidad Técnica</h6>
+                        <div class="p-3 rounded-4 shadow-sm" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2);">
+                            <div class="small text-success opacity-75 text-uppercase mb-1" style="font-size: 0.70rem; letter-spacing: 0.5px;">Razón Social</div>
+                            <div class="fw-semibold text-white fs-6">{{ ficha.entidad_tecnica.razon_social if ficha.entidad_tecnica else 'N/A' }}</div>
+                        </div>
+                    </div>
+                    
+                    <!-- SECCIÓN 2: PREDIO -->
+                    <div class="col-12">
+                        <h6 class="fw-bold mb-3 border-bottom border-secondary pb-2" style="color: #3b82f6;"><i class="bi bi-house-door"></i> Ubicación del Predio</h6>
+                        <div class="p-3 rounded-4 shadow-sm" style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2);">
+                            <div class="row g-3 mb-3">
+                                <div class="col-12">
+                                    <div class="small text-info opacity-75 text-uppercase mb-1" style="font-size: 0.70rem; letter-spacing: 0.5px;">Dirección / Referencia</div>
+                                    <div class="fw-semibold text-white fs-6">{{ ficha.predio.direccion if ficha.predio else '-' }} <span class="text-light opacity-75 fw-normal ms-1">({{ ficha.predio.referencia if ficha.predio else 'Sin referencia' }})</span></div>
+                                </div>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-2 col-4">
+                                    <div class="small text-info opacity-75 text-uppercase mb-1" style="font-size: 0.70rem;">Dpto</div>
+                                    <div class="fw-medium text-white">{{ ficha.predio.departamento if ficha.predio else '-' }}</div>
+                                </div>
+                                <div class="col-md-2 col-4">
+                                    <div class="small text-info opacity-75 text-uppercase mb-1" style="font-size: 0.70rem;">Provincia</div>
+                                    <div class="fw-medium text-white">{{ ficha.predio.provincia if ficha.predio else '-' }}</div>
+                                </div>
+                                <div class="col-md-2 col-4">
+                                    <div class="small text-info opacity-75 text-uppercase mb-1" style="font-size: 0.70rem;">Distrito</div>
+                                    <div class="fw-medium text-white text-truncate" title="{{ ficha.predio.distrito if ficha.predio else '' }}">{{ ficha.predio.distrito if ficha.predio else '-' }}</div>
+                                </div>
+                                <div class="col-md-2 col-4">
+                                    <div class="small text-info opacity-75 text-uppercase mb-1" style="font-size: 0.70rem;">Mz</div>
+                                    <div class="fw-medium text-white">{{ ficha.predio.manzana if ficha.predio else '-' }}</div>
+                                </div>
+                                <div class="col-md-2 col-4">
+                                    <div class="small text-info opacity-75 text-uppercase mb-1" style="font-size: 0.70rem;">Lote</div>
+                                    <div class="fw-medium text-white">{{ ficha.predio.lote if ficha.predio else '-' }}</div>
+                                </div>
+                                <div class="col-md-2 col-4">
+                                    <div class="small text-info opacity-75 text-uppercase mb-1" style="font-size: 0.70rem;">Sub Lote</div>
+                                    <div class="fw-medium text-white">{{ ficha.predio.sublote if ficha.predio else '-' }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-                <h6 class="border-bottom pb-2 text-primary mt-3">Predio</h6>
-                <div class="table-responsive">
-                    <table class="table table-sm table-bordered">
-                        <tbody>
-                            <tr><th class="table-secondary w-25">Dirección</th><td colspan="3">{{ ficha.predio.direccion if ficha.predio else '' }}</td></tr>
-                            <tr><th class="table-secondary">Dpto</th><td>{{ ficha.predio.departamento if ficha.predio else '' }}</td><th class="table-secondary">Provincia</th><td>{{ ficha.predio.provincia if ficha.predio else '' }}</td></tr>
-                            <tr><th class="table-secondary">Distrito</th><td>{{ ficha.predio.distrito if ficha.predio else '' }}</td><th class="table-secondary">C. Poblado</th><td>{{ ficha.predio.centro_poblado if ficha.predio else '' }}</td></tr>
-                            <tr><th class="table-secondary">Mz</th><td>{{ ficha.predio.manzana if ficha.predio else '' }}</td><th class="table-secondary">Lote</th><td>{{ ficha.predio.lote if ficha.predio else '' }}</td></tr>
-                            <tr><th class="table-secondary">Sub Lote</th><td>{{ ficha.predio.sublote if ficha.predio else '' }}</td><th class="table-secondary">Referencia</th><td>{{ ficha.predio.referencia if ficha.predio else '' }}</td></tr>
-                        </tbody>
-                    </table>
-                </div>
+                    <!-- SECCIÓN 3: JEFE DE FAMILIA -->
+                    <div class="col-12">
+                        <h6 class="fw-bold mb-3 border-bottom border-secondary pb-2" style="color: #f59e0b;"><i class="bi bi-person-badge"></i> Jefe de Familia</h6>
+                        <div class="p-3 rounded-4 shadow-sm" style="background: rgba(245, 158, 11, 0.05); border: 1px solid rgba(245, 158, 11, 0.1);">
+                            
+                            <div class="small text-warning opacity-75 text-uppercase mb-1" style="font-size: 0.70rem; letter-spacing: 0.5px;">Nombre Completo</div>
+                            <div class="fw-semibold fs-5 mb-3 text-white">{{ ficha.jefe.nombres if ficha.jefe else '' }} {{ ficha.jefe.ap_paterno if ficha.jefe else '' }} {{ ficha.jefe.ap_materno if ficha.jefe else '' }}</div>
+                            
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-4 col-6">
+                                    <div class="small text-warning opacity-75 text-uppercase mb-1" style="font-size: 0.70rem;">N° DNI</div>
+                                    <div class="fw-medium text-white">{{ ficha.jefe.dni if ficha.jefe else '-' }}</div>
+                                </div>
+                                <div class="col-md-4 col-6">
+                                    <div class="small text-warning opacity-75 text-uppercase mb-1" style="font-size: 0.70rem;">Nacimiento</div>
+                                    <div class="fw-medium text-white">{{ ficha.jefe.nacimiento if ficha.jefe else '-' }}</div>
+                                </div>
+                                <div class="col-md-4 col-6">
+                                    <div class="small text-warning opacity-75 text-uppercase mb-1" style="font-size: 0.70rem;">Estado Civil</div>
+                                    <div class="fw-medium text-white">{{ ficha.jefe.estado_civil if ficha.jefe else '-' }}</div>
+                                </div>
+                            </div>
+                            
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-4 col-6">
+                                    <div class="small text-warning opacity-75 text-uppercase mb-1" style="font-size: 0.70rem;">Instrucción</div>
+                                    <div class="fw-medium text-white">{{ ficha.jefe.grado_instruccion if ficha.jefe else '-' }}</div>
+                                </div>
+                                <div class="col-md-4 col-6">
+                                    <div class="small text-warning opacity-75 text-uppercase mb-1" style="font-size: 0.70rem;">Ocupación</div>
+                                    <div class="fw-medium text-white">{{ ficha.jefe.ocupacion if ficha.jefe else '-' }}</div>
+                                </div>
+                                <div class="col-md-4 col-6">
+                                    <div class="small text-warning opacity-75 text-uppercase mb-1" style="font-size: 0.70rem;">Ingreso (S/.)</div>
+                                    <div class="fw-bold text-success">{{ ficha.jefe.ingreso_mensual if ficha.jefe else '0' }}</div>
+                                </div>
+                            </div>
+                            
+                            <div class="row g-3">
+                                <div class="col-md-4 col-6">
+                                    <div class="small text-warning opacity-75 text-uppercase mb-1" style="font-size: 0.70rem;">Situación Laboral</div>
+                                    <div class="fw-medium text-white">{{ ficha.jefe.sit_laboral if ficha.jefe else '-' }}</div>
+                                </div>
+                                <div class="col-md-4 col-6">
+                                    <div class="small text-warning opacity-75 text-uppercase mb-1" style="font-size: 0.70rem;">Condición Econ.</div>
+                                    <div class="fw-medium text-white">{{ ficha.jefe.condicion_eco if ficha.jefe else '-' }}</div>
+                                </div>
+                                <div class="col-md-4 col-6">
+                                    <div class="small text-warning opacity-75 text-uppercase mb-1" style="font-size: 0.70rem;">Discapacidad</div>
+                                    <div class="fw-medium text-danger">{{ ficha.jefe.discapacidad if ficha.jefe else 'Ninguna' }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-                <h6 class="border-bottom pb-2 text-primary mt-3">Jefe de Familia</h6>
-                <div class="table-responsive">
-                    <table class="table table-sm table-bordered">
-                        <tbody>
-                            <tr><th class="table-secondary w-25">Nombre Completo</th><td colspan="3">{{ ficha.jefe.nombres if ficha.jefe else '' }} {{ ficha.jefe.ap_paterno if ficha.jefe else '' }} {{ ficha.jefe.ap_materno if ficha.jefe else '' }}</td></tr>
-                            <tr><th class="table-secondary">DNI</th><td>{{ ficha.jefe.dni if ficha.jefe else '' }}</td><th class="table-secondary">Nacimiento</th><td>{{ ficha.jefe.nacimiento if ficha.jefe else '' }}</td></tr>
-                            <tr><th class="table-secondary">Estado Civil</th><td>{{ ficha.jefe.estado_civil if ficha.jefe else '' }}</td><th class="table-secondary">Instrucción</th><td>{{ ficha.jefe.grado_instruccion if ficha.jefe else '' }}</td></tr>
-                            <tr><th class="table-secondary">Ocupación</th><td>{{ ficha.jefe.ocupacion if ficha.jefe else '' }}</td><th class="table-secondary">Discapacidad</th><td>{{ ficha.jefe.discapacidad if ficha.jefe else '' }}</td></tr>
-                            <tr><th class="table-secondary">Sit. Laboral</th><td>{{ ficha.jefe.sit_laboral if ficha.jefe else '' }}</td><th class="table-secondary">Condición Eco.</th><td>{{ ficha.jefe.condicion_eco if ficha.jefe else '' }}</td></tr>
-                            <tr><th class="table-secondary">Ingreso (S/.)</th><td colspan="3">{{ ficha.jefe.ingreso_mensual if ficha.jefe else '' }}</td></tr>
-                        </tbody>
-                    </table>
-                </div>
+                    <!-- SECCIÓN 4: CÓNYUGE -->
+                    <div class="col-12">
+                        <h6 class="fw-bold mb-3 border-bottom border-secondary pb-2" style="color: #f43f5e;"><i class="bi bi-person-heart"></i> Cónyuge</h6>
+                        <div class="p-3 rounded-4 shadow-sm" style="background: rgba(244, 63, 94, 0.05); border: 1px solid rgba(244, 63, 94, 0.1);">
+                            {% if ficha.conyuge and ficha.conyuge.nombres %}
+                            
+                            <div class="small text-danger opacity-75 text-uppercase mb-1" style="font-size: 0.70rem; letter-spacing: 0.5px;">Nombre Completo</div>
+                            <div class="fw-semibold fs-5 mb-3 text-white">{{ ficha.conyuge.nombres }} {{ ficha.conyuge.ap_paterno }} {{ ficha.conyuge.ap_materno }}</div>
+                            
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-4 col-6">
+                                    <div class="small text-danger opacity-75 text-uppercase mb-1" style="font-size: 0.70rem;">N° DNI</div>
+                                    <div class="fw-medium text-white">{{ ficha.conyuge.dni }}</div>
+                                </div>
+                                <div class="col-md-4 col-6">
+                                    <div class="small text-danger opacity-75 text-uppercase mb-1" style="font-size: 0.70rem;">Nacimiento</div>
+                                    <div class="fw-medium text-white">{{ ficha.conyuge.nacimiento }}</div>
+                                </div>
+                                <div class="col-md-4 col-6">
+                                    <div class="small text-danger opacity-75 text-uppercase mb-1" style="font-size: 0.70rem;">Estado Civil</div>
+                                    <div class="fw-medium text-white">{{ ficha.conyuge.estado_civil }}</div>
+                                </div>
+                            </div>
+                            
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-4 col-6">
+                                    <div class="small text-danger opacity-75 text-uppercase mb-1" style="font-size: 0.70rem;">Instrucción</div>
+                                    <div class="fw-medium text-white">{{ ficha.conyuge.grado_instruccion }}</div>
+                                </div>
+                                <div class="col-md-4 col-6">
+                                    <div class="small text-danger opacity-75 text-uppercase mb-1" style="font-size: 0.70rem;">Ocupación</div>
+                                    <div class="fw-medium text-white">{{ ficha.conyuge.ocupacion }}</div>
+                                </div>
+                                <div class="col-md-4 col-6">
+                                    <div class="small text-danger opacity-75 text-uppercase mb-1" style="font-size: 0.70rem;">Ingreso (S/.)</div>
+                                    <div class="fw-bold text-success">{{ ficha.conyuge.ingreso_mensual }}</div>
+                                </div>
+                            </div>
+                            
+                            <div class="row g-3">
+                                <div class="col-md-4 col-6">
+                                    <div class="small text-danger opacity-75 text-uppercase mb-1" style="font-size: 0.70rem;">Situación Laboral</div>
+                                    <div class="fw-medium text-white">{{ ficha.conyuge.sit_laboral }}</div>
+                                </div>
+                                <div class="col-md-4 col-6">
+                                    <div class="small text-danger opacity-75 text-uppercase mb-1" style="font-size: 0.70rem;">Condición Econ.</div>
+                                    <div class="fw-medium text-white">{{ ficha.conyuge.condicion }}</div>
+                                </div>
+                                <div class="col-md-4 col-6">
+                                    <div class="small text-danger opacity-75 text-uppercase mb-1" style="font-size: 0.70rem;">Discapacidad</div>
+                                    <div class="fw-medium text-warning">{{ ficha.conyuge.discapacidad }}</div>
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="text-center opacity-50 py-3">
+                                <i class="bi bi-person-x fs-2 d-block mb-2 text-white"></i>
+                                <span class="fw-medium text-white">Sin cónyuge registrado en esta ficha</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
 
-                <h6 class="border-bottom pb-2 text-primary mt-3">Cónyuge</h6>
-                {% if ficha.conyuge and ficha.conyuge.nombres %}
-                <div class="table-responsive">
-                    <table class="table table-sm table-bordered">
-                        <tbody>
-                            <tr><th class="table-secondary w-25">Nombre Completo</th><td colspan="3">{{ ficha.conyuge.nombres }} {{ ficha.conyuge.ap_paterno }} {{ ficha.conyuge.ap_materno }}</td></tr>
-                            <tr><th class="table-secondary">DNI</th><td>{{ ficha.conyuge.dni }}</td><th class="table-secondary">Nacimiento</th><td>{{ ficha.conyuge.nacimiento }}</td></tr>
-                            <tr><th class="table-secondary">Estado Civil</th><td>{{ ficha.conyuge.estado_civil }}</td><th class="table-secondary">Instrucción</th><td>{{ ficha.conyuge.grado_instruccion }}</td></tr>
-                            <tr><th class="table-secondary">Ocupación</th><td>{{ ficha.conyuge.ocupacion }}</td><th class="table-secondary">Discapacidad</th><td>{{ ficha.conyuge.discapacidad }}</td></tr>
-                            <tr><th class="table-secondary">Sit. Laboral</th><td>{{ ficha.conyuge.sit_laboral }}</td><th class="table-secondary">Condición Eco.</th><td>{{ ficha.conyuge.condicion }}</td></tr>
-                            <tr><th class="table-secondary">Ingreso (S/.)</th><td colspan="3">{{ ficha.conyuge.ingreso_mensual }}</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-                {% else %}
-                <div class="alert alert-secondary py-2 text-center text-dark">
-                    <i class="bi bi-info-circle"></i> Sin cónyuge registrado.
-                </div>
-                {% endif %}
+                    <!-- SECCIÓN 5: CARGAS Y ADICIONALES -->
+                    <div class="col-12">
+                        <h6 class="fw-bold mb-3 border-bottom border-secondary pb-2" style="color: #a855f7;"><i class="bi bi-diagram-3-fill"></i> Cargas Familiares y Adicionales</h6>
+                        
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <div class="p-3 rounded-4 shadow-sm" style="background: rgba(168, 85, 247, 0.05); border: 1px solid rgba(168, 85, 247, 0.1);">
+                                    <h6 class="text-white mb-3 fw-bold"><i class="bi bi-person-lines-fill me-2" style="color: #c084fc;"></i> Cargas Familiares <span class="badge bg-secondary ms-2">{{ ficha.cargas|length }}</span></h6>
+                                    
+                                    {% if ficha.cargas %}
+                                    <div class="table-responsive">
+                                        <table class="table table-dark table-borderless table-striped table-sm mb-0 align-middle">
+                                            <thead>
+                                                <tr style="border-bottom: 2px solid #a855f7;">
+                                                    <th class="text-light opacity-75 fw-normal small text-uppercase">Nombre Completo</th>
+                                                    <th class="text-light opacity-75 fw-normal small text-uppercase">DNI</th>
+                                                    <th class="text-light opacity-75 fw-normal small text-uppercase">Vínculo</th>
+                                                    <th class="text-light opacity-75 fw-normal small text-uppercase">Nacimiento</th>
+                                                    <th class="text-light opacity-75 fw-normal small text-uppercase">Discapacidad</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for carga in ficha.cargas %}
+                                                <tr>
+                                                    <td class="fw-medium">{{ carga.nombres }}</td>
+                                                    <td>{{ carga.dni }}</td>
+                                                    <td><span class="badge bg-dark border border-secondary">{{ carga.vinculo }}</span></td>
+                                                    <td>{{ carga.nacimiento }}</td>
+                                                    <td class="{% if carga.discapacidad and carga.discapacidad != 'Ninguna' %}text-warning{% endif %}">{{ carga.discapacidad }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {% else %}
+                                    <div class="text-center opacity-50 py-2">
+                                        <small class="text-white">No hay cargas familiares registradas</small>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="col-12">
+                                <div class="p-3 rounded-4 shadow-sm" style="background: rgba(168, 85, 247, 0.05); border: 1px solid rgba(168, 85, 247, 0.1);">
+                                    <h6 class="text-white mb-3 fw-bold"><i class="bi bi-person-plus-fill me-2" style="color: #c084fc;"></i> Familiar Adicional / Representante <span class="badge bg-secondary ms-2">{{ ficha.adicionales|length }}</span></h6>
+                                    
+                                    {% if ficha.adicionales %}
+                                    <div class="table-responsive">
+                                        <table class="table table-dark table-borderless table-striped table-sm mb-0 align-middle">
+                                            <thead>
+                                                <tr style="border-bottom: 2px solid #a855f7;">
+                                                    <th class="text-light opacity-75 fw-normal small text-uppercase">Nombre Completo</th>
+                                                    <th class="text-light opacity-75 fw-normal small text-uppercase">DNI/CE</th>
+                                                    <th class="text-light opacity-75 fw-normal small text-uppercase">Vínculo</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for adic in ficha.adicionales %}
+                                                <tr>
+                                                    <td class="fw-medium">{{ adic.nombres }} {{ adic.ap_paterno }}</td>
+                                                    <td>{{ adic.dni }}</td>
+                                                    <td><span class="badge bg-dark border border-secondary">{{ adic.vinculo }}</span></td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {% else %}
+                                    <div class="text-center opacity-50 py-2">
+                                        <small class="text-white">No hay adicionales registrados</small>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-                <h6 class="border-bottom pb-2 text-primary mt-3">Cargas Familiares</h6>
-                {% if ficha.cargas %}
-                <div class="table-responsive">
-                    <table class="table table-sm table-bordered">
-                        <thead class="table-secondary"><tr><th>Nombre</th><th>DNI</th><th>Nacimiento</th><th>Vínculo</th><th>Instrucción</th><th>Discapacidad</th></tr></thead>
-                        <tbody>
-                            {% for carga in ficha.cargas %}
-                            <tr>
-                                <td>{{ carga.nombres }}</td><td>{{ carga.dni }}</td><td>{{ carga.nacimiento }}</td>
-                                <td>{{ carga.vinculo }}</td><td>{{ carga.instruccion }}</td><td>{{ carga.discapacidad }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                {% else %}
-                <div class="alert alert-secondary py-2 text-center text-dark">
-                    <i class="bi bi-info-circle"></i> Sin cargas registradas.
-                </div>
-                {% endif %}
+                    <!-- SECCIÓN 6: CONTACTO -->
+                    <div class="col-12">
+                        <h6 class="fw-bold mb-3 border-bottom border-secondary pb-2" style="color: #06b6d4;"><i class="bi bi-telephone-inbound-fill"></i> Contacto</h6>
+                        <div class="p-3 rounded-4 shadow-sm" style="background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.1);">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="small text-info opacity-75 text-uppercase mb-1" style="font-size: 0.70rem; letter-spacing: 0.5px;">Correo Electrónico</div>
+                                    <div class="fw-semibold text-white fs-6">{{ ficha.correo_contacto or 'No registrado' }}</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="small text-info opacity-75 text-uppercase mb-1" style="font-size: 0.70rem; letter-spacing: 0.5px;">Teléfono / Celular</div>
+                                    <div class="fw-semibold text-white fs-6">{{ ficha.telefono_contacto or 'No registrado' }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-                <h6 class="border-bottom pb-2 text-primary mt-3">Familiar Adicional / Representante</h6>
-                {% if ficha.adicionales %}
-                <div class="table-responsive">
-                    <table class="table table-sm table-bordered">
-                        <thead class="table-secondary"><tr><th>Nombre Completo</th><th>DNI/CE</th><th>Vínculo</th></tr></thead>
-                        <tbody>
-                            {% for adic in ficha.adicionales %}
-                            <tr>
-                                <td>{{ adic.nombres }} {{ adic.ap_paterno }} {{ adic.ap_materno }}</td>
-                                <td>{{ adic.dni }}</td>
-                                <td>{{ adic.vinculo }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
                 </div>
-                {% else %}
-                <div class="alert alert-secondary py-2 text-center text-dark">
-                    <i class="bi bi-info-circle"></i> Sin familiares adicionales registrados.
-                </div>
-                {% endif %}
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
