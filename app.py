@@ -19,6 +19,8 @@ from models.carga_familiar import CargaFamiliar
 from models.familiar_adicional import FamiliarAdicional
 from models.contacto import Contacto
 from models.empresa import Empresa
+from models.constatacion import Constatacion
+
 from models.beneficiario import Beneficiario
 # pyrefly: ignore [missing-import]
 from docxtpl import DocxTemplate
@@ -28,6 +30,7 @@ import jinja2
 from werkzeug.security import generate_password_hash, check_password_hash
 from models.database import db
 from models.usuario import Usuario
+from models.admin import Admin
 from models.entidad_tecnica import EntidadTecnica
 from models.ingeniero import Ingeniero
 from models.registro_et import RegistroET
@@ -69,14 +72,14 @@ NOMBRE_PLANTILLA = "FORMULARIO DE INSCRIPCION 2025 II.pdf"  # El nombre de tu ar
 def login_requerido(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'usuario' not in session:
+        if 'admin' not in session:
             return redirect(url_for('mostrar_login'))
         return f(*args, **kwargs)
     return decorated_function
 
 def get_current_user():
-    if 'usuario' in session:
-        return Usuario.query.filter_by(username=session['usuario']).first()
+    if 'admin' in session:
+        return Admin.query.filter_by(username=session['admin']).first()
     return None
 
 def get_entidades_permitidas():
@@ -85,6 +88,22 @@ def get_entidades_permitidas():
 @app.context_processor
 def inject_user():
     return dict(current_user=get_current_user())
+
+
+# ==========================================
+# GLOBAL ERROR HANDLERS (Evitar pantallas feas)
+# ==========================================
+from sqlalchemy.exc import OperationalError, SQLAlchemyError
+
+@app.errorhandler(500)
+@app.errorhandler(OperationalError)
+@app.errorhandler(SQLAlchemyError)
+def handle_database_error(error):
+    db.session.rollback()
+    flash('El servidor de base de datos cortó la conexión inesperadamente por inactividad. Por favor, vuelve a intentar la acción.', 'danger')
+    # Intenta redirigir a la página donde estaba, si no, al dashboard
+    from flask import request
+    return redirect(request.referrer or url_for('dashboard'))
 
 @app.route('/') 
 def mostrar_login():
@@ -96,14 +115,14 @@ def login():
         usuario = request.form.get('usuario')
         password = request.form.get('password')
         
-        # Validación con Base de Datos
-        user = Usuario.query.filter_by(username=usuario).first()
+        # Validación con Base de Datos usando la tabla Admin
+        admin_user = Admin.query.filter_by(username=usuario).first()
         
-        if user and check_password_hash(user.password_hash, password):
-            session['usuario'] = user.username  # Registramos al usuario en la sesión
+        if admin_user and check_password_hash(admin_user.password_hash, password):
+            session['admin'] = admin_user.username  # Registramos al admin en la sesión
             return redirect(url_for('dashboard'))
         else:
-            return render_template('login.html', error='Usuario o contraseña incorrectos')
+            return render_template('login.html', error='Administrador o contraseña incorrectos')
     
     return render_template('login.html')
 
@@ -306,7 +325,7 @@ def descargar_plantilla_fc():
 # --- RUTA LOGOUT (Cierre de sesión seguro) ---
 @app.route('/logout')
 def logout():
-    session.clear()
+    session.pop('admin', None)
     return redirect(url_for('mostrar_login'))
 
 # ==========================================
@@ -1410,5 +1429,133 @@ def eliminar_ficha(id):
 
 
 
+
+
+# =======================================
+# GENERADOR WEB DE ACTAS (SIN EXCEL)
+# ==========================================
+@app.route('/generar_actas_web/<int:id_ficha>', methods=['POST'])
+@login_requerido
+def generar_actas_web(id_ficha):
+    ficha = FichaInscripcion.query.get_or_404(id_ficha)
+    
+    partida = request.form.get('partida', '')
+    fecha = request.form.get('fecha', '')
+    agua = request.form.get('agua') == 'on'
+    saneamiento = request.form.get('saneamiento') == 'on'
+    
+    try:
+        # 1. Guardar/Actualizar en Base de Datos (Tabla Constatacion)
+        constatacion = Constatacion.query.filter_by(id_ficha=id_ficha).first()
+        from datetime import datetime
+        
+        # Parse fecha si existe, sino utcnow
+        fecha_obj = datetime.strptime(fecha, '%Y-%m-%d').date() if fecha else datetime.utcnow().date()
+            
+        if not constatacion:
+            constatacion = Constatacion(
+                id_ficha=id_ficha,
+                partida_registral=partida,
+                fecha_inspeccion=fecha_obj,
+                tiene_agua=agua,
+                tiene_saneamiento=saneamiento
+            )
+            db.session.add(constatacion)
+        else:
+            constatacion.partida_registral = partida
+            constatacion.fecha_inspeccion = fecha_obj
+            constatacion.tiene_agua = agua
+            constatacion.tiene_saneamiento = saneamiento
+            
+        db.session.commit()
+        
+        # 2. Generar Contexto para el Word
+        jefe = ficha.jefe
+        predio = ficha.predio
+        entidad = ficha.entidad_tecnica
+        # Asumimos que toma el primer ingeniero asignado a la ficha o entidad
+        ingeniero = ficha.entidad_tecnica.ingeniero_vigente if ficha.entidad_tecnica else None
+        
+        contexto = {
+            # Datos Constatacin
+            'PARTIDA': partida,
+            'FECHA': fecha_obj.strftime('%d/%m/%Y'),
+            'SIAGUA': 'X' if agua else '',
+            'NOAGUA': '' if agua else 'X',
+            'SISANEAMIENTO': 'X' if saneamiento else '',
+            'NOSANEAMIENTO': '' if saneamiento else 'X',
+            
+            # Datos Beneficiario y Predio
+            'DNIBENEFICIARIO': jefe.dni if jefe else '',
+            'GRUPOFAMILIAR': f"{jefe.ap_paterno} {jefe.ap_materno} {jefe.nombres}" if jefe else '',
+            'DIRECCIONPREDIO': f"{predio.direccion} {predio.manzana} {predio.lote} {predio.centro_poblado}" if predio else '',
+            'DISTRITOBENE': predio.distrito if predio else '',
+            
+            # Datos Entidad
+            'ET': entidad.razon_social if entidad else '',
+            'RUC': entidad.ruc if entidad else '',
+            'RL': f"{entidad.rep_nombres} {entidad.rep_apellido_paterno} {entidad.rep_apellido_materno}" if entidad else '',
+            'DNIRL': entidad.rep_dni if entidad else '',
+            'DOMICILIADORL': entidad.direccion if entidad else '',
+            'CODIGOREGISTRO': 'NO ESPECIFICADO',  # Esto no est nativo en la ET actual
+            
+            # Datos Ingeniero
+            'NOMBREING': f"{ingeniero.nombres} {ingeniero.apellido_paterno} {ingeniero.apellido_materno}" if ingeniero else '',
+            'DNIING': ingeniero.dni if ingeniero else '',
+            'CIP': ingeniero.cip if ingeniero else ''
+        }
+        
+        # 3. Crear ZIP en memoria
+        import zipfile
+        import io
+        from docxtpl import DocxTemplate
+        
+        memory_zip = io.BytesIO()
+        with zipfile.ZipFile(memory_zip, 'w', zipfile.ZIP_DEFLATED) as zf:
+            
+            # A) Formato de Constatacin
+            try:
+                doc_const = DocxTemplate('FORMATO DE CONSTATACIÓN.docx')
+                doc_const.render(contexto)
+                doc_io_const = io.BytesIO()
+                doc_const.save(doc_io_const)
+                zf.writestr(f"FORMATO_CONSTATACION_{contexto['DNIBENEFICIARIO']}.docx", doc_io_const.getvalue())
+            except Exception as e:
+                print("Error generando constatacin:", e)
+                
+            # B) Informe Tcnico
+            et_lower = str(contexto['ET']).lower()
+            if 'coquitos' in et_lower:
+                plantilla_informe = "INFORME_TECNICO_COQUITOS.docx"
+            elif 'senia' in et_lower:
+                plantilla_informe = "INFORME_TECNICO_SENIA.docx"
+            else:
+                plantilla_informe = "INFORME_TECNICO_SENIA.docx" # Por defecto Senia
+                
+            try:
+                doc_inf = DocxTemplate(plantilla_informe)
+                doc_inf.render(contexto)
+                doc_io_inf = io.BytesIO()
+                doc_inf.save(doc_io_inf)
+                zf.writestr(f"INFORME_TECNICO_{contexto['DNIBENEFICIARIO']}.docx", doc_io_inf.getvalue())
+            except Exception as e:
+                print("Error generando informe:", e)
+                
+        memory_zip.seek(0)
+        return send_file(
+            memory_zip,
+            mimetype='application/zip',
+            as_attachment=True,
+            download_name=f"ACTAS_{contexto['DNIBENEFICIARIO']}.zip"
+        )
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al generar documentos: {str(e)}', 'danger')
+        return redirect(request.referrer or url_for('fichas'))
+
+
+
 if __name__ == '__main__':
     app.run(debug=True)
+# ===

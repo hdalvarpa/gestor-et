@@ -1,0 +1,17 @@
+from models.database import db
+from datetime import datetime
+
+class Constatacion(db.Model):
+    __tablename__ = 'constataciones'
+    
+    id_constatacion = db.Column(db.Integer, primary_key=True)
+    id_ficha = db.Column(db.Integer, db.ForeignKey('fichas_inscripcion.id_ficha', ondelete='CASCADE'), nullable=False, unique=True)
+    
+    partida_registral = db.Column(db.String(50))
+    fecha_inspeccion = db.Column(db.Date, nullable=False, default=datetime.utcnow)
+    tiene_agua = db.Column(db.Boolean, default=False)
+    tiene_saneamiento = db.Column(db.Boolean, default=False)
+    
+
+    def __repr__(self):
+        return f'<Constatacion Ficha {self.id_ficha}>'
