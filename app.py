@@ -20,6 +20,7 @@ from models.familiar_adicional import FamiliarAdicional
 from models.contacto import Contacto
 from models.empresa import Empresa
 from models.constatacion import Constatacion
+from models.informe_tecnico import InformeTecnico
 
 from models.beneficiario import Beneficiario
 # pyrefly: ignore [missing-import]
@@ -1194,29 +1195,29 @@ def eliminar_asignacion_usuario(id_usuario, id_entidad):
 # GESTIÓN DE FICHAS DE INSCRIPCIÓN
 # ==========================================
 
-@app.route('/fichas')
+@app.route('/matriz')
 @login_requerido
-def listar_fichas():
+def listar_matriz():
     fichas = FichaInscripcion.query.order_by(FichaInscripcion.fecha_registro.desc()).all()
     entidades = get_entidades_permitidas()
     return render_template('fichas.html', fichas=fichas, entidades=entidades)
 
-@app.route('/fichas/nuevo')
+@app.route('/matriz/nuevo')
 @login_requerido
-def nueva_ficha_form():
+def nueva_matriz_form():
     entidades = get_entidades_permitidas()
     return render_template('formulario_fichas.html', entidades=entidades)
 
-@app.route('/fichas/editar/<int:id_ficha>')
+@app.route('/matriz/editar/<int:id_ficha>')
 @login_requerido
-def editar_ficha_form(id_ficha):
+def editar_matriz_form(id_ficha):
     ficha = FichaInscripcion.query.get_or_404(id_ficha)
     entidades = get_entidades_permitidas()
     return render_template('formulario_fichas.html', entidades=entidades, ficha=ficha)
 
-@app.route('/fichas/actualizar/<int:id_ficha>', methods=['POST'])
+@app.route('/matriz/actualizar/<int:id_ficha>', methods=['POST'])
 @login_requerido
-def actualizar_ficha(id_ficha):
+def actualizar_matriz(id_ficha):
     ficha = FichaInscripcion.query.get_or_404(id_ficha)
     try:
         ficha.id_entidad_tecnica = request.form.get('id_entidad_tecnica')
@@ -1227,6 +1228,7 @@ def actualizar_ficha(id_ficha):
         if not ficha.predio:
             ficha.predio = FichaPredio(id_ficha=ficha.id_ficha)
             db.session.add(ficha.predio)
+        ficha.predio.partida_registral = request.form.get('partida_registral', '').upper()
         ficha.predio.direccion = request.form.get('direccion', '').upper()
         ficha.predio.departamento = request.form.get('departamento', '').upper()
         ficha.predio.provincia = request.form.get('provincia', '').upper()
@@ -1304,17 +1306,48 @@ def actualizar_ficha(id_ficha):
             )
             db.session.add(nuevo_adic)
 
+        
+        # CONST E INFORME
+        from datetime import datetime
+        fecha_str = request.form.get('fecha_inspeccion')
+        f_inspeccion = datetime.strptime(fecha_str, '%Y-%m-%d').date() if fecha_str else datetime.utcnow().date()
+        
+        if not ficha.constatacion:
+            ficha.constatacion = Constatacion(id_ficha=ficha.id_ficha)
+            db.session.add(ficha.constatacion)
+        ficha.constatacion.fecha_inspeccion = f_inspeccion
+        ficha.constatacion.tiene_agua = (request.form.get('tiene_agua') == 'on')
+        ficha.constatacion.tiene_saneamiento = (request.form.get('tiene_saneamiento') == 'on')
+        
+        def to_float(val):
+            try: return float(val) if val else None
+            except: return None
+            
+        if not ficha.informe:
+            ficha.informe = InformeTecnico(id_ficha=ficha.id_ficha)
+            db.session.add(ficha.informe)
+        ficha.informe.medida_frente = to_float(request.form.get('medida_frente'))
+        ficha.informe.colindante_frente = request.form.get('colindante_frente', '').upper()
+        ficha.informe.medida_derecha = to_float(request.form.get('medida_derecha'))
+        ficha.informe.colindante_derecha = request.form.get('colindante_derecha', '').upper()
+        ficha.informe.medida_izquierda = to_float(request.form.get('medida_izquierda'))
+        ficha.informe.colindante_izquierda = request.form.get('colindante_izquierda', '').upper()
+        ficha.informe.medida_fondo = to_float(request.form.get('medida_fondo'))
+        ficha.informe.colindante_fondo = request.form.get('colindante_fondo', '').upper()
+        ficha.informe.area_terreno = to_float(request.form.get('area_terreno'))
+        ficha.informe.descripcion = request.form.get('descripcion', '').upper()
+
         db.session.commit()
         flash('Ficha de Inscripción actualizada correctamente.', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'Error al actualizar la Ficha: {str(e)}', 'danger')
 
-    return redirect(url_for('listar_fichas'))
+    return redirect(url_for('listar_matriz'))
 
-@app.route('/fichas/crear', methods=['POST'])
+@app.route('/matriz/crear', methods=['POST'])
 @login_requerido
-def crear_ficha():
+def crear_matriz():
     try:
         # 1. Crear la cabecera de la ficha
         nueva_ficha = FichaInscripcion(
@@ -1328,6 +1361,7 @@ def crear_ficha():
         # 2. Crear Predio
         nuevo_predio = FichaPredio(
             id_ficha=nueva_ficha.id_ficha,
+            partida_registral=request.form.get('partida_registral', '').upper(),
             direccion=request.form.get('direccion', '').upper(),
             departamento=request.form.get('departamento', '').upper(),
             provincia=request.form.get('provincia', '').upper(),
@@ -1404,6 +1438,38 @@ def crear_ficha():
                 vinculo=request.form.get('vinculo_adic_1', '').upper()
             )
             db.session.add(nuevo_adic)
+
+        # 7. Crear Constatacion e Informe Tecnico
+        from datetime import datetime
+        fecha_str = request.form.get('fecha_inspeccion')
+        f_inspeccion = datetime.strptime(fecha_str, '%Y-%m-%d').date() if fecha_str else datetime.now().date()
+        
+        nueva_constatacion = Constatacion(
+            id_ficha=nueva_ficha.id_ficha,
+            fecha_inspeccion=f_inspeccion,
+            tiene_agua=(request.form.get('tiene_agua') == 'on'),
+            tiene_saneamiento=(request.form.get('tiene_saneamiento') == 'on')
+        )
+        db.session.add(nueva_constatacion)
+        
+        def to_float(val):
+            try: return float(val) if val else None
+            except: return None
+            
+        nuevo_informe = InformeTecnico(
+            id_ficha=nueva_ficha.id_ficha,
+            medida_frente=to_float(request.form.get('medida_frente')),
+            colindante_frente=request.form.get('colindante_frente', '').upper(),
+            medida_derecha=to_float(request.form.get('medida_derecha')),
+            colindante_derecha=request.form.get('colindante_derecha', '').upper(),
+            medida_izquierda=to_float(request.form.get('medida_izquierda')),
+            colindante_izquierda=request.form.get('colindante_izquierda', '').upper(),
+            medida_fondo=to_float(request.form.get('medida_fondo')),
+            colindante_fondo=request.form.get('colindante_fondo', '').upper(),
+            area_terreno=to_float(request.form.get('area_terreno')),
+            descripcion=request.form.get('descripcion', '').upper()
+        )
+        db.session.add(nuevo_informe)
         
         db.session.commit()
         flash('Ficha de Inscripción guardada correctamente en BD Normalizada.', 'success')
@@ -1411,11 +1477,11 @@ def crear_ficha():
         db.session.rollback()
         flash(f'Error al guardar la Ficha: {str(e)}', 'danger')
         
-    return redirect(url_for('listar_fichas'))
+    return redirect(url_for('listar_matriz'))
 
-@app.route('/fichas/eliminar/<int:id>', methods=['POST'])
+@app.route('/matriz/eliminar/<int:id>', methods=['POST'])
 @login_requerido
-def eliminar_ficha(id):
+def eliminar_matriz(id):
     ficha = FichaInscripcion.query.get_or_404(id)
     try:
         db.session.delete(ficha)
@@ -1425,7 +1491,7 @@ def eliminar_ficha(id):
         db.session.rollback()
         flash(f'Error al eliminar la ficha: {str(e)}', 'danger')
         
-    return redirect(url_for('listar_fichas'))
+    return redirect(url_for('listar_matriz'))
 
 
 
@@ -1434,41 +1500,20 @@ def eliminar_ficha(id):
 # =======================================
 # GENERADOR WEB DE ACTAS (SIN EXCEL)
 # ==========================================
-@app.route('/generar_actas_web/<int:id_ficha>', methods=['POST'])
+@app.route('/generar_actas_web/<int:id_ficha>', methods=['GET'])
 @login_requerido
 def generar_actas_web(id_ficha):
     ficha = FichaInscripcion.query.get_or_404(id_ficha)
     
-    partida = request.form.get('partida', '')
-    fecha = request.form.get('fecha', '')
-    agua = request.form.get('agua') == 'on'
-    saneamiento = request.form.get('saneamiento') == 'on'
+    partida = ficha.predio.partida_registral if ficha.predio and ficha.predio.partida_registral else ''
+    constatacion = Constatacion.query.filter_by(id_ficha=id_ficha).first()
+    agua = constatacion.tiene_agua if constatacion else False
+    saneamiento = constatacion.tiene_saneamiento if constatacion else False
+    
+    from datetime import datetime
+    fecha_obj = constatacion.fecha_inspeccion if constatacion and constatacion.fecha_inspeccion else datetime.utcnow().date()
     
     try:
-        # 1. Guardar/Actualizar en Base de Datos (Tabla Constatacion)
-        constatacion = Constatacion.query.filter_by(id_ficha=id_ficha).first()
-        from datetime import datetime
-        
-        # Parse fecha si existe, sino utcnow
-        fecha_obj = datetime.strptime(fecha, '%Y-%m-%d').date() if fecha else datetime.utcnow().date()
-            
-        if not constatacion:
-            constatacion = Constatacion(
-                id_ficha=id_ficha,
-                partida_registral=partida,
-                fecha_inspeccion=fecha_obj,
-                tiene_agua=agua,
-                tiene_saneamiento=saneamiento
-            )
-            db.session.add(constatacion)
-        else:
-            constatacion.partida_registral = partida
-            constatacion.fecha_inspeccion = fecha_obj
-            constatacion.tiene_agua = agua
-            constatacion.tiene_saneamiento = saneamiento
-            
-        db.session.commit()
-        
         # 2. Generar Contexto para el Word
         jefe = ficha.jefe
         predio = ficha.predio

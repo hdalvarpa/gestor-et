@@ -6,6 +6,7 @@ class FichaPredio(db.Model):
     id_predio = db.Column(db.Integer, primary_key=True)
     id_ficha = db.Column(db.Integer, db.ForeignKey('fichas_inscripcion.id_ficha', ondelete='CASCADE'), nullable=False, unique=True)
 
+    partida_registral = db.Column(db.String(50))
     direccion = db.Column(db.String(255))
     departamento = db.Column(db.String(50))
     provincia = db.Column(db.String(50))

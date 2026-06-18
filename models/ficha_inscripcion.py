@@ -19,6 +19,10 @@ class FichaInscripcion(db.Model):
     jefe = db.relationship('FichaJefe', backref='ficha', uselist=False, cascade='all, delete-orphan')
     conyuge = db.relationship('FichaConyuge', backref='ficha', uselist=False, cascade='all, delete-orphan')
     
+    # Nuevas Relaciones de la Matriz (Constatacin e Informe Tcnico)
+    constatacion = db.relationship('Constatacion', backref='ficha_rel', uselist=False, cascade='all, delete-orphan')
+    informe = db.relationship('InformeTecnico', backref='ficha_rel', uselist=False, cascade='all, delete-orphan')
+    
     # Relaciones 1 a N
     cargas = db.relationship('FichaCarga', backref='ficha', cascade='all, delete-orphan')
     adicionales = db.relationship('FichaAdicional', backref='ficha', cascade='all, delete-orphan')
