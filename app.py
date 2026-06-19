@@ -1309,13 +1309,10 @@ def actualizar_matriz(id_ficha):
         
         # CONST E INFORME
         from datetime import datetime
-        fecha_str = request.form.get('fecha_inspeccion')
-        f_inspeccion = datetime.strptime(fecha_str, '%Y-%m-%d').date() if fecha_str else datetime.utcnow().date()
-        
+                
         if not ficha.constatacion:
             ficha.constatacion = Constatacion(id_ficha=ficha.id_ficha)
             db.session.add(ficha.constatacion)
-        ficha.constatacion.fecha_inspeccion = f_inspeccion
         ficha.constatacion.tiene_agua = (request.form.get('tiene_agua') == 'on')
         ficha.constatacion.tiene_saneamiento = (request.form.get('tiene_saneamiento') == 'on')
         
@@ -1441,12 +1438,9 @@ def crear_matriz():
 
         # 7. Crear Constatacion e Informe Tecnico
         from datetime import datetime
-        fecha_str = request.form.get('fecha_inspeccion')
-        f_inspeccion = datetime.strptime(fecha_str, '%Y-%m-%d').date() if fecha_str else datetime.now().date()
-        
+                
         nueva_constatacion = Constatacion(
             id_ficha=nueva_ficha.id_ficha,
-            fecha_inspeccion=f_inspeccion,
             tiene_agua=(request.form.get('tiene_agua') == 'on'),
             tiene_saneamiento=(request.form.get('tiene_saneamiento') == 'on')
         )
@@ -1500,7 +1494,7 @@ def eliminar_matriz(id):
 # =======================================
 # GENERADOR WEB DE ACTAS (SIN EXCEL)
 # ==========================================
-@app.route('/generar_actas_web/<int:id_ficha>', methods=['GET'])
+# RUTA VIEJA DE ACTAS DESHABILITADA
 @login_requerido
 def generar_actas_web(id_ficha):
     ficha = FichaInscripcion.query.get_or_404(id_ficha)
@@ -1511,7 +1505,10 @@ def generar_actas_web(id_ficha):
     saneamiento = constatacion.tiene_saneamiento if constatacion else False
     
     from datetime import datetime
-    fecha_obj = constatacion.fecha_inspeccion if constatacion and constatacion.fecha_inspeccion else datetime.utcnow().date()
+    fecha_str = request.args.get('fecha', '')
+    if not fecha_str:
+        from datetime import datetime
+        fecha_str = datetime.now().strftime('%d/%m/%Y')
     
     try:
         # 2. Generar Contexto para el Word
@@ -1524,7 +1521,7 @@ def generar_actas_web(id_ficha):
         contexto = {
             # Datos Constatacin
             'PARTIDA': partida,
-            'FECHA': fecha_obj.strftime('%d/%m/%Y'),
+            'FECHA': fecha_str,
             'SIAGUA': 'X' if agua else '',
             'NOAGUA': '' if agua else 'X',
             'SISANEAMIENTO': 'X' if saneamiento else '',
@@ -1600,6 +1597,163 @@ def generar_actas_web(id_ficha):
         return redirect(request.referrer or url_for('fichas'))
 
 
+
+
+# =======================================
+# NUEVAS RUTAS DE DESCARGA DE DOCUMENTOS
+# =======================================
+
+def get_contexto_documentos(id_ficha, fecha_str=None):
+    ficha = FichaInscripcion.query.get_or_404(id_ficha)
+    partida = ficha.predio.partida_registral if ficha.predio and ficha.predio.partida_registral else ''
+    constatacion = Constatacion.query.filter_by(id_ficha=id_ficha).first()
+    agua = constatacion.tiene_agua if constatacion else False
+    saneamiento = constatacion.tiene_saneamiento if constatacion else False
+    
+    if not fecha_str:
+        from datetime import datetime
+        fecha_str = datetime.now().strftime('%d/%m/%Y')
+        
+    jefe = ficha.jefe
+    predio = ficha.predio
+    entidad = ficha.entidad_tecnica
+    ingeniero = ficha.entidad_tecnica.ingeniero_vigente if ficha.entidad_tecnica else None
+    
+    contexto = {
+        'PARTIDA': partida,
+        'FECHA': fecha_str,
+        'SIAGUA': 'X' if agua else '',
+        'NOAGUA': '' if agua else 'X',
+        'SISANEAMIENTO': 'X' if saneamiento else '',
+        'NOSANEAMIENTO': '' if saneamiento else 'X',
+        'DNIBENEFICIARIO': jefe.dni if jefe else '',
+        'GRUPOFAMILIAR': f"{jefe.ap_paterno} {jefe.ap_materno} {jefe.nombres}" if jefe else '',
+        'DIRECCIONPREDIO': f"{predio.direccion} {predio.manzana} {predio.lote} {predio.centro_poblado}" if predio else '',
+        'DISTRITOBENE': predio.distrito if predio else '',
+        'ET': entidad.razon_social if entidad else '',
+        'RUC': entidad.ruc if entidad else '',
+        'RL': f"{entidad.rep_nombres} {entidad.rep_apellido_paterno} {entidad.rep_apellido_materno}" if entidad else '',
+        'DNIRL': entidad.rep_dni if entidad else '',
+        'DOMICILIADORL': entidad.direccion if entidad else '',
+        'CODIGOREGISTRO': sorted(entidad.registros, key=lambda x: x.anio, reverse=True)[0].codigo_registro if entidad and entidad.registros else 'NO ESPECIFICADO',
+        'NOMBREING': f"{ingeniero.nombres} {ingeniero.apellido_paterno} {ingeniero.apellido_materno}" if ingeniero else '',
+        'DNIING': ingeniero.dni if ingeniero else '',
+        'CIP': ingeniero.cip if ingeniero else ''
+    }
+    return contexto
+
+@app.route('/descargar_constatacion/<int:id_ficha>', methods=['GET'])
+@login_requerido
+def descargar_constatacion(id_ficha):
+    try:
+        from docxtpl import DocxTemplate
+        import io
+        
+        fecha_str = request.args.get('fecha', '')
+        contexto = get_contexto_documentos(id_ficha, fecha_str)
+        
+        doc_const = DocxTemplate('FORMATO DE CONSTATACIÓN.docx')
+        doc_const.render(contexto)
+        
+        doc_io = io.BytesIO()
+        doc_const.save(doc_io)
+        doc_io.seek(0)
+        
+        return send_file(
+            doc_io,
+            as_attachment=True,
+            download_name=f"FORMATO_CONSTATACION_{contexto['DNIBENEFICIARIO']}.docx",
+            mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+    except Exception as e:
+        flash(f'Error generando Constatacion: {str(e)}', 'danger')
+        return redirect(url_for('listar_matriz'))
+
+@app.route('/descargar_informe/<int:id_ficha>', methods=['GET'])
+@login_requerido
+def descargar_informe(id_ficha):
+    try:
+        from docxtpl import DocxTemplate
+        import io
+        
+        contexto = get_contexto_documentos(id_ficha)
+        et_lower = str(contexto['ET']).lower()
+        if 'coquitos' in et_lower:
+            plantilla = "INFORME_TECNICO_COQUITOS.docx"
+        elif 'senia' in et_lower:
+            plantilla = "INFORME_TECNICO_SENIA.docx"
+        else:
+            plantilla = "INFORME_TECNICO_COQUITOS.docx"
+            
+        doc_inf = DocxTemplate(plantilla)
+        doc_inf.render(contexto)
+        
+        doc_io = io.BytesIO()
+        doc_inf.save(doc_io)
+        doc_io.seek(0)
+        
+        return send_file(
+            doc_io,
+            as_attachment=True,
+            download_name=f"INFORME_TECNICO_{contexto['DNIBENEFICIARIO']}.docx",
+            mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+    except Exception as e:
+        flash(f'Error generando Informe Tcnico: {str(e)}', 'danger')
+        return redirect(url_for('listar_matriz'))
+
+@app.route('/descargar_todo_zip/<int:id_ficha>', methods=['GET'])
+@login_requerido
+def descargar_todo_zip(id_ficha):
+    try:
+        from docxtpl import DocxTemplate
+        import zipfile
+        import io
+        
+        from datetime import datetime
+        
+        fecha_str = request.args.get('fecha', '')
+        contexto = get_contexto_documentos(id_ficha, fecha_str)
+        
+        memory_zip = io.BytesIO()
+        with zipfile.ZipFile(memory_zip, 'w', zipfile.ZIP_DEFLATED) as zf:
+            
+            # 1. Constatacion
+            doc_const = DocxTemplate('FORMATO DE CONSTATACIÓN.docx')
+            doc_const.render(contexto)
+            doc_io_const = io.BytesIO()
+            doc_const.save(doc_io_const)
+            zf.writestr(f"1_FORMATO_CONSTATACION_{contexto['DNIBENEFICIARIO']}.docx", doc_io_const.getvalue())
+            
+            # 2. Informe Tecnico
+            et_lower = str(contexto['ET']).lower()
+            plantilla = "INFORME_TECNICO_SENIA.docx" if 'senia' in et_lower else "INFORME_TECNICO_COQUITOS.docx"
+            doc_inf = DocxTemplate(plantilla)
+            doc_inf.render(contexto)
+            doc_io_inf = io.BytesIO()
+            doc_inf.save(doc_io_inf)
+            zf.writestr(f"2_INFORME_TECNICO_{contexto['DNIBENEFICIARIO']}.docx", doc_io_inf.getvalue())
+            
+            # 3. Ficha de Inscripcion (PDF)
+            # Invocamos la funcion original de app.py para obtener el PDF generado
+            try:
+                resp_pdf = generar_pdf(id_ficha)
+                pdf_bytes = resp_pdf.get_data()
+                zf.writestr(f"0_FICHA_INSCRIPCION_{contexto['DNIBENEFICIARIO']}.pdf", pdf_bytes)
+            except Exception as pdf_ex:
+                print("Error incrustando el PDF al ZIP:", pdf_ex)
+
+            
+        memory_zip.seek(0)
+        return send_file(
+            memory_zip,
+            mimetype="application/zip",
+            as_attachment=True,
+            download_name=f"EXPEDIENTE_COMPLETO_{contexto['DNIBENEFICIARIO']}.zip"
+        )
+    except Exception as e:
+        flash(f'Error generando ZIP completo: {str(e)}', 'danger')
+        return redirect(url_for('listar_matriz'))
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -6,8 +6,6 @@ class Constatacion(db.Model):
     
     id_constatacion = db.Column(db.Integer, primary_key=True)
     id_ficha = db.Column(db.Integer, db.ForeignKey('fichas_inscripcion.id_ficha', ondelete='CASCADE'), nullable=False, unique=True)
-    
-    fecha_inspeccion = db.Column(db.Date, nullable=False, default=datetime.utcnow)
     tiene_agua = db.Column(db.Boolean, default=False)
     tiene_saneamiento = db.Column(db.Boolean, default=False)
     

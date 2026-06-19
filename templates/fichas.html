@@ -56,21 +56,32 @@
                             <button class="btn btn-sm btn-outline-success me-1" data-bs-toggle="modal" data-bs-target="#modalVer-{{ ficha.id_ficha }}" title="Ver Detalles">
                                 👁 Ver
                             </button>
-                            <a href="/generar_actas_web/{{ ficha.id_ficha }}" class="btn btn-sm btn-outline-primary me-1" title="Descargar Actas">
-    🖺 Actas
-</a>
-<a href="/matriz/editar/{{ ficha.id_ficha }}" class="btn btn-sm btn-outline-warning me-1" title="Editar Ficha">
+                            
+                            <div class="dropdown d-inline-block">
+                              <button class="btn btn-sm btn-primary dropdown-toggle text-white me-1" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Documentos">
+                                <i class="fas fa-folder-open"></i> Docs
+                              </button>
+                              <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="font-size:0.85rem;">
+                                <li>
+                                    <form action="/generar/{{ ficha.id_ficha }}" method="POST" class="d-inline m-0 p-0">
+                                        <button type="submit" class="dropdown-item text-danger fw-bold bg-transparent border-0 w-100 text-start">
+                                            <i class="fas fa-file-pdf me-2"></i>1. Ficha de Inscripción
+                                        </button>
+                                    </form>
+                                </li>
+                                <li><a class="dropdown-item text-info fw-bold" href="#" onclick="abrirModalActas({{ ficha.id_ficha }}, 'constatacion')"><i class="fas fa-file-word me-2"></i>2. Formato de Constatación</a></li>
+                                <li><a class="dropdown-item text-primary fw-bold" href="/descargar_informe/{{ ficha.id_ficha }}"><i class="fas fa-file-word me-2"></i>3. Informe Técnico</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-success fw-bold" href="#" onclick="abrirModalActas({{ ficha.id_ficha }}, 'zip')"><i class="fas fa-file-archive me-2"></i>Descargar Todos (ZIP)</a></li>
+                              </ul>
+                            </div>
+                            
+                            <a href="/matriz/editar/{{ ficha.id_ficha }}" class="btn btn-sm btn-outline-warning me-1" title="Editar Ficha">
                                 ✏️ Editar
                             </a>
-                            <form action="/generar/{{ ficha.id_ficha }}" method="POST" class="d-inline">
-                                <button type="submit" class="btn btn-sm btn-outline-info me-1" title="Generar PDF">
-                                    📄 PDF
-                                </button>
-                            </form>
                             <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalEliminar-{{ ficha.id_ficha }}">
                                 🗑️ Eliminar
-                            </button>
-                        </td>
+                            </button></td>
                     </tr>
                     {% endfor %}
                     {% if not fichas %}
@@ -360,6 +371,84 @@
                         </div>
                     </div>
 
+
+                    <!-- SECCIÓN: PARTIDA Y CONSTATACIÓN -->
+                    <div class="col-12">
+                        <h6 class="fw-bold mb-3 border-bottom border-secondary pb-2" style="color: #0d6efd;"><i class="bi bi-file-earmark-text"></i> Partida y Constatación</h6>
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <div class="p-2 bg-light rounded border text-dark">
+                                    <small class="text-muted d-block">Partida Registral</small>
+                                    <span class="fw-bold">{{ ficha.predio.partida_registral if ficha.predio and ficha.predio.partida_registral else 'No registrado' }}</span>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="p-2 bg-light rounded border text-center text-dark">
+                                    <small class="text-muted d-block">Cuenta c/ Agua</small>
+                                    <span class="fw-bold text-{{ 'success' if ficha.constatacion and ficha.constatacion.tiene_agua else 'danger' }}">{{ 'SÍ' if ficha.constatacion and ficha.constatacion.tiene_agua else 'NO' }}</span>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="p-2 bg-light rounded border text-center text-dark">
+                                    <small class="text-muted d-block">Saneamiento</small>
+                                    <span class="fw-bold text-{{ 'success' if ficha.constatacion and ficha.constatacion.tiene_saneamiento else 'danger' }}">{{ 'SÍ' if ficha.constatacion and ficha.constatacion.tiene_saneamiento else 'NO' }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SECCIÓN: INFORME TÉCNICO -->
+                    <div class="col-12">
+                        <h6 class="fw-bold mb-3 border-bottom border-secondary pb-2" style="color: #198754;"><i class="bi bi-rulers"></i> Informe Técnico (Linderos y Medidas)</h6>
+                        <div class="table-responsive mb-2 bg-light rounded text-dark">
+                            <table class="table table-sm table-bordered text-center align-middle mb-0" style="font-size:0.85rem;">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="text-start">LINDEROS</th>
+                                        <th>MEDIDAS (m)</th>
+                                        <th>COLINDANTES</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td class="text-start fw-bold">FRENTE</td>
+                                        <td>{{ ficha.informe.medida_frente if ficha.informe and ficha.informe.medida_frente else '-' }}</td>
+                                        <td>{{ ficha.informe.colindante_frente if ficha.informe and ficha.informe.colindante_frente else '-' }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-start fw-bold">DERECHA</td>
+                                        <td>{{ ficha.informe.medida_derecha if ficha.informe and ficha.informe.medida_derecha else '-' }}</td>
+                                        <td>{{ ficha.informe.colindante_derecha if ficha.informe and ficha.informe.colindante_derecha else '-' }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-start fw-bold">IZQUIERDA</td>
+                                        <td>{{ ficha.informe.medida_izquierda if ficha.informe and ficha.informe.medida_izquierda else '-' }}</td>
+                                        <td>{{ ficha.informe.colindante_izquierda if ficha.informe and ficha.informe.colindante_izquierda else '-' }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-start fw-bold">FONDO</td>
+                                        <td>{{ ficha.informe.medida_fondo if ficha.informe and ficha.informe.medida_fondo else '-' }}</td>
+                                        <td>{{ ficha.informe.colindante_fondo if ficha.informe and ficha.informe.colindante_fondo else '-' }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="row g-2 mb-4">
+                            <div class="col-md-4">
+                                <div class="p-2 bg-light rounded border h-100 text-dark">
+                                    <small class="text-muted d-block">Área de Terreno</small>
+                                    <span class="fw-bold">{{ ficha.informe.area_terreno if ficha.informe and ficha.informe.area_terreno else '-' }} m2</span>
+                                </div>
+                            </div>
+                            <div class="col-md-8">
+                                <div class="p-2 bg-light rounded border h-100 text-dark">
+                                    <small class="text-muted d-block">Descripción</small>
+                                    <span class="fw-bold">{{ ficha.informe.descripcion if ficha.informe and ficha.informe.descripcion else '-' }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- SECCIÓN 6: CONTACTO -->
                     <div class="col-12">
                         <h6 class="fw-bold mb-3 border-bottom border-secondary pb-2" style="color: #06b6d4;"><i class="bi bi-telephone-inbound-fill"></i> Contacto</h6>
@@ -389,5 +478,77 @@
 
 
 
+
+
+
+
+
+<!-- Modal para Fecha de Actas -->
+<div class="modal fade" id="modalFechaActas" tabindex="-1" aria-labelledby="modalFechaActasLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-info text-white">
+        <h5 class="modal-title fw-bold" id="modalFechaActasLabel"><i class="fas fa-calendar-alt me-2"></i>Fecha de Constatación</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted small mb-3">Ingrese la fecha exacta que desea que se imprima en las Actas e Informe Técnico.</p>
+        <div class="mb-3">
+            <label class="form-label fw-bold">Fecha para los Documentos <span class="text-danger">*</span></label>
+            <input type="date" id="inputFechaDescarga" class="form-control" required>
+            <div class="invalid-feedback">Debe seleccionar una fecha obligatoriamente.</div>
+        </div>
+      </div>
+      <div class="modal-footer bg-light">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-info text-white fw-bold" id="btnDescargarActasModal"><i class="fas fa-file-word me-2"></i>Descargar Actas</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+    let currentIdFicha = null;
+    let currentTipoDescarga = 'zip';
+    
+    function abrirModalActas(idFicha, tipo) {
+        currentIdFicha = idFicha;
+        currentTipoDescarga = tipo;
+        const inputFecha = document.getElementById('inputFechaDescarga');
+        // Setear fecha de hoy por defecto en formato YYYY-MM-DD
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        inputFecha.value = `${yyyy}-${mm}-${dd}`;
+        inputFecha.classList.remove('is-invalid');
+        
+        var modal = new bootstrap.Modal(document.getElementById('modalFechaActas'));
+        modal.show();
+    }
+    
+    document.getElementById('btnDescargarActasModal').addEventListener('click', function() {
+        const inputFecha = document.getElementById('inputFechaDescarga');
+        if (!inputFecha.value) {
+            inputFecha.classList.add('is-invalid');
+            return;
+        }
+        
+        // Convertir formato YYYY-MM-DD a DD/MM/YYYY para el backend
+        const parts = inputFecha.value.split('-');
+        const fechaFormateada = `${parts[2]}/${parts[1]}/${parts[0]}`;
+        
+                if(currentTipoDescarga === 'constatacion') {
+            window.location.href = `/descargar_constatacion/${currentIdFicha}?fecha=${encodeURIComponent(fechaFormateada)}`;
+        } else {
+            window.location.href = `/descargar_todo_zip/${currentIdFicha}?fecha=${encodeURIComponent(fechaFormateada)}`;
+        }
+        
+        // Ocultar modal
+        var modalEl = document.getElementById('modalFechaActas');
+        var modal = bootstrap.Modal.getInstance(modalEl);
+        modal.hide();
+    });
+</script>
 
 {% endblock %}
