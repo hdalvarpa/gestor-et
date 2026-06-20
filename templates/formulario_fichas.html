@@ -143,8 +143,7 @@
             <div class="row">
                 <div class="col-md-4 mb-3">
                     <label class="form-label fw-bold">Grado de Instrucción</label>
-                    <input type="text" class="form-control" name="grado_instruccion"
-                        value="{{ ficha.jefe.grado_instruccion if ficha and ficha.jefe else '' }}" required>
+                    <select class="form-select instruccion-select" name="grado_instruccion" data-selected="{{ ficha.jefe.grado_instruccion if ficha and ficha.jefe else '' }}" required><option value="">Seleccione...</option></select>
                 </div>
                 <div class="col-md-4 mb-3">
                     <label class="form-label fw-bold">Ocupación</label>
@@ -278,9 +277,7 @@
                 <div class="row">
                     <div class="col-md-4 mb-3">
                         <label class="form-label fw-bold" for="id_instruccion_conyuge">Grado de Instrucción</label>
-                        <input type="text" class="form-control" name="grado_instruccion_conyuge"
-                            id="id_instruccion_conyuge"
-                            value="{{ ficha.conyuge.grado_instruccion if ficha and ficha.conyuge else '' }}">
+                        <select class="form-select instruccion-select" name="grado_instruccion_conyuge" id="id_instruccion_conyuge" data-selected="{{ ficha.conyuge.grado_instruccion if ficha and ficha.conyuge else '' }}"><option value="">Seleccione...</option></select>
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label fw-bold" for="id_ocupacion_conyuge">Ocupación</label>
@@ -406,8 +403,7 @@
                                         data-selected="{{ ficha.cargas[0].vinculo if ficha and ficha.cargas|length > 0 else '' }}">
                                         <option value="">Seleccione...</option>
                                     </select></td>
-                                <td><input type="text" class="form-control form-control-sm" name="instruccion_carga_1"
-                                        value="{{ ficha.cargas[0].instruccion if ficha and ficha.cargas|length > 0 else '' }}">
+                                <td><select class="form-select form-select-sm instruccion-select" name="instruccion_carga_1" data-selected="{{ ficha.cargas[0].instruccion if ficha and ficha.cargas|length > 0 else '' }}"><option value="">Sel...</option></select>
                                 </td>
                                 <td>
                                     <div class="d-flex flex-column gap-1">
@@ -455,8 +451,7 @@
                                         data-selected="{{ ficha.cargas[1].vinculo if ficha and ficha.cargas|length > 1 else '' }}">
                                         <option value="">Seleccione...</option>
                                     </select></td>
-                                <td><input type="text" class="form-control form-control-sm" name="instruccion_carga_2"
-                                        value="{{ ficha.cargas[1].instruccion if ficha and ficha.cargas|length > 1 else '' }}">
+                                <td><select class="form-select form-select-sm instruccion-select" name="instruccion_carga_2" data-selected="{{ ficha.cargas[1].instruccion if ficha and ficha.cargas|length > 1 else '' }}"><option value="">Sel...</option></select>
                                 </td>
                                 <td>
                                     <div class="d-flex flex-column gap-1">
@@ -504,8 +499,7 @@
                                         data-selected="{{ ficha.cargas[2].vinculo if ficha and ficha.cargas|length > 2 else '' }}">
                                         <option value="">Seleccione...</option>
                                     </select></td>
-                                <td><input type="text" class="form-control form-control-sm" name="instruccion_carga_3"
-                                        value="{{ ficha.cargas[2].instruccion if ficha and ficha.cargas|length > 2 else '' }}">
+                                <td><select class="form-select form-select-sm instruccion-select" name="instruccion_carga_3" data-selected="{{ ficha.cargas[2].instruccion if ficha and ficha.cargas|length > 2 else '' }}"><option value="">Sel...</option></select>
                                 </td>
                                 <td>
                                     <div class="d-flex flex-column gap-1">
@@ -1076,6 +1070,50 @@
             alert("Error Global al cargar formulario: " + globalErr.message);
         }
     });
+</script>
+
+
+<!-- SCRIPT PARA CARGAR GRADOS DE INSTRUCCION DESDE JSON -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    fetch('/static/data/instruccion.json')
+        .then(response => response.json())
+        .then(data => {
+            const selects = document.querySelectorAll('.instruccion-select');
+            selects.forEach(select => {
+                // Obtener el valor previamente guardado
+                const selectedValue = select.getAttribute('data-selected') || '';
+                
+                // Limpiar (dejar solo el default)
+                // Ojo: algunos tienen texto "Sel..." y otros "Seleccione..." as que conservamos el primer hijo
+                const primerHijo = select.firstElementChild;
+                select.innerHTML = '';
+                if(primerHijo) select.appendChild(primerHijo);
+                
+                // Rellenar options
+                data.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item;
+                    option.textContent = item;
+                    
+                    // Comparacion robusta
+                    let valDB = (selectedValue || '').trim().toUpperCase();
+                    let valItem = item.trim().toUpperCase();
+                    
+                    // Remover tildes basicas para asegurar match
+                    valDB = valDB.replace('Ó', 'O').replace('É', 'E');
+                    valItem = valItem.replace('Ó', 'O').replace('É', 'E');
+
+                    if (valItem === valDB) {
+
+                        option.selected = true;
+                    }
+                    select.appendChild(option);
+                });
+            });
+        })
+        .catch(err => console.error('Error cargando instruccion.json:', err));
+});
 </script>
 
 {% endblock %}

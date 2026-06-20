@@ -711,7 +711,7 @@ def crear_pdf_datos(mi_predio, mi_jefe, mi_conyuge, carga_1, carga_2, carga_3, f
         c.drawString(508, 337, "X")
     c.setFont(fonttype_default, sizefont_default)
 
-    c.drawString(18, 310, mi_jefe.grado_instruccion)
+    draw_instruccion(c, 18, 310, mi_jefe.grado_instruccion)
     c.drawString(155, 310, mi_jefe.ocupacion)
     # --- RADIO BUTTONS: DISCAPACIDAD JEFE (Aquí está la lógica de la X) ---
     c.setFont("Helvetica", 9)
