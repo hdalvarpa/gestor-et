@@ -7,6 +7,25 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter, A4
 from datetime import datetime
 import io
+
+import requests
+from docxtpl import InlineImage
+from docx.shared import Mm
+
+def inject_logo(doc, contexto):
+    url_logo = contexto.get('URL_LOGO')
+    if url_logo:
+        try:
+            r = requests.get(url_logo, timeout=3)
+            if r.status_code == 200:
+                import io
+                img_stream = io.BytesIO(r.content)
+                contexto['LOGO_ET'] = InlineImage(doc, img_stream, width=Mm(40))
+                return
+        except Exception as e:
+            pass
+    contexto['LOGO_ET'] = ''
+
 import os
 import zipfile
 # pyrefly: ignore [missing-import]
@@ -107,6 +126,10 @@ def handle_database_error(error):
     return redirect(request.referrer or url_for('dashboard'))
 
 @app.route('/') 
+def landing():
+    return render_template('landing.html')
+
+@app.route('/login') 
 def mostrar_login():
     return render_template('login.html')
 
@@ -290,6 +313,7 @@ def constatacion():
                                 
                             if plantilla_informe:
                                 doc_inf = DocxTemplate(plantilla_informe)
+                                inject_logo(doc_inf, contexto)
                                 doc_inf.render(contexto)
                                 
                                 doc_io_inf = io.BytesIO()
@@ -887,6 +911,7 @@ def crear_entidad():
     ruc = request.form.get('ruc', '').strip()
     razon_social = request.form.get('razon_social', '').strip()
     direccion = request.form.get('direccion', '').strip()
+    url_logo = request.form.get('url_logo', '').strip()
     
     # Datos Representante Legal
     rep_dni = request.form.get('rep_dni', '').strip()
@@ -904,6 +929,7 @@ def crear_entidad():
             ruc=ruc,
             razon_social=razon_social.upper(),
             direccion=direccion.upper() if direccion else None,
+            url_logo=url_logo if url_logo else None,
             rep_dni=rep_dni,
             rep_nombres=rep_nombres.upper(),
             rep_apellido_paterno=rep_ap_paterno.upper(),
@@ -916,6 +942,47 @@ def crear_entidad():
     except Exception as e:
         db.session.rollback()
         flash(f'Ocurrió un error al guardar en base de datos: {str(e)}', 'danger')
+        
+    return redirect(url_for('listar_entidades'))
+
+
+
+@app.route('/entidades/editar/<int:id>', methods=['POST'])
+def editar_entidad(id):
+    entidad = EntidadTecnica.query.get_or_404(id)
+    
+    ruc = request.form.get('ruc', '').strip()
+    razon_social = request.form.get('razon_social', '').strip()
+    direccion = request.form.get('direccion', '').strip()
+    url_logo = request.form.get('url_logo', '').strip()
+    
+    rep_dni = request.form.get('rep_dni', '').strip()
+    rep_nombres = request.form.get('rep_nombres', '').strip()
+    rep_ap_paterno = request.form.get('rep_ap_paterno', '').strip()
+    rep_ap_materno = request.form.get('rep_ap_materno', '').strip()
+    
+    # Validar RUC repetido
+    existente = EntidadTecnica.query.filter(EntidadTecnica.ruc == ruc, EntidadTecnica.id_entidad_tecnica != id).first()
+    if existente:
+        flash('Error: Ya existe otra Entidad Tcnica con este RUC.', 'danger')
+        return redirect(url_for('listar_entidades'))
+        
+    try:
+        entidad.ruc = ruc
+        entidad.razon_social = razon_social.upper()
+        entidad.direccion = direccion.upper() if direccion else None
+        entidad.url_logo = url_logo if url_logo else None
+        
+        entidad.rep_dni = rep_dni
+        entidad.rep_nombres = rep_nombres.upper()
+        entidad.rep_apellido_paterno = rep_ap_paterno.upper()
+        entidad.rep_apellido_materno = rep_ap_materno.upper() if rep_ap_materno else ''
+        
+        db.session.commit()
+        flash('Entidad Tcnica actualizada correctamente.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Ocurri un error al actualizar: {str(e)}', 'danger')
         
     return redirect(url_for('listar_entidades'))
 
@@ -1532,6 +1599,9 @@ def generar_actas_web(id_ficha):
             'GRUPOFAMILIAR': f"{jefe.ap_paterno} {jefe.ap_materno} {jefe.nombres}" if jefe else '',
             'DIRECCIONPREDIO': f"{predio.direccion} {predio.manzana} {predio.lote} {predio.centro_poblado}" if predio else '',
             'DISTRITOBENE': predio.distrito if predio else '',
+        'DEPARTAMENTO': predio.departamento if predio else '-',
+        'PROVINCIA': predio.provincia if predio else '-',
+        'URL_LOGO': entidad.url_logo if entidad else None,
             
             # Datos Entidad
             'ET': entidad.razon_social if entidad else '',
@@ -1576,6 +1646,7 @@ def generar_actas_web(id_ficha):
                 
             try:
                 doc_inf = DocxTemplate(plantilla_informe)
+                inject_logo(doc_inf, contexto)
                 doc_inf.render(contexto)
                 doc_io_inf = io.BytesIO()
                 doc_inf.save(doc_io_inf)
@@ -1618,6 +1689,7 @@ def get_contexto_documentos(id_ficha, fecha_str=None):
     predio = ficha.predio
     entidad = ficha.entidad_tecnica
     ingeniero = ficha.entidad_tecnica.ingeniero_vigente if ficha.entidad_tecnica else None
+    informe = ficha.informe
     
     contexto = {
         'PARTIDA': partida,
@@ -1630,6 +1702,9 @@ def get_contexto_documentos(id_ficha, fecha_str=None):
         'GRUPOFAMILIAR': f"{jefe.ap_paterno} {jefe.ap_materno} {jefe.nombres}" if jefe else '',
         'DIRECCIONPREDIO': f"{predio.direccion} {predio.manzana} {predio.lote} {predio.centro_poblado}" if predio else '',
         'DISTRITOBENE': predio.distrito if predio else '',
+        'DEPARTAMENTO': predio.departamento if predio else '-',
+        'PROVINCIA': predio.provincia if predio else '-',
+        'URL_LOGO': entidad.url_logo if entidad else None,
         'ET': entidad.razon_social if entidad else '',
         'RUC': entidad.ruc if entidad else '',
         'RL': f"{entidad.rep_nombres} {entidad.rep_apellido_paterno} {entidad.rep_apellido_materno}" if entidad else '',
@@ -1638,7 +1713,19 @@ def get_contexto_documentos(id_ficha, fecha_str=None):
         'CODIGOREGISTRO': sorted(entidad.registros, key=lambda x: x.anio, reverse=True)[0].codigo_registro if entidad and entidad.registros else 'NO ESPECIFICADO',
         'NOMBREING': f"{ingeniero.nombres} {ingeniero.apellido_paterno} {ingeniero.apellido_materno}" if ingeniero else '',
         'DNIING': ingeniero.dni if ingeniero else '',
-        'CIP': ingeniero.cip if ingeniero else ''
+        'CIP': ingeniero.cip if ingeniero else '',
+        
+        # Nuevas variables de Informe Tecnico (Linderos)
+        'M_FREN': informe.medida_frente if informe and informe.medida_frente else '-',
+        'C_FREN': informe.colindante_frente if informe and informe.colindante_frente else '-',
+        'M_DER': informe.medida_derecha if informe and informe.medida_derecha else '-',
+        'C_DER': informe.colindante_derecha if informe and informe.colindante_derecha else '-',
+        'M_IZQ': informe.medida_izquierda if informe and informe.medida_izquierda else '-',
+        'C_IZQ': informe.colindante_izquierda if informe and informe.colindante_izquierda else '-',
+        'M_FON': informe.medida_fondo if informe and informe.medida_fondo else '-',
+        'C_FON': informe.colindante_fondo if informe and informe.colindante_fondo else '-',
+        'AREA': str(informe.area_terreno) if informe and informe.area_terreno else '-',
+        'DESC': informe.descripcion if informe and informe.descripcion else '-'
     }
     return contexto
 
@@ -1677,15 +1764,9 @@ def descargar_informe(id_ficha):
         import io
         
         contexto = get_contexto_documentos(id_ficha)
-        et_lower = str(contexto['ET']).lower()
-        if 'coquitos' in et_lower:
-            plantilla = "INFORME_TECNICO_COQUITOS.docx"
-        elif 'senia' in et_lower:
-            plantilla = "INFORME_TECNICO_SENIA.docx"
-        else:
-            plantilla = "INFORME_TECNICO_COQUITOS.docx"
-            
+        plantilla = "INFORME_TECNICO_MASTER.docx"
         doc_inf = DocxTemplate(plantilla)
+        inject_logo(doc_inf, contexto)
         doc_inf.render(contexto)
         
         doc_io = io.BytesIO()
@@ -1726,9 +1807,9 @@ def descargar_todo_zip(id_ficha):
             zf.writestr(f"1_FORMATO_CONSTATACION_{contexto['DNIBENEFICIARIO']}.docx", doc_io_const.getvalue())
             
             # 2. Informe Tecnico
-            et_lower = str(contexto['ET']).lower()
-            plantilla = "INFORME_TECNICO_SENIA.docx" if 'senia' in et_lower else "INFORME_TECNICO_COQUITOS.docx"
+            plantilla = "INFORME_TECNICO_MASTER.docx"
             doc_inf = DocxTemplate(plantilla)
+            inject_logo(doc_inf, contexto)
             doc_inf.render(contexto)
             doc_io_inf = io.BytesIO()
             doc_inf.save(doc_io_inf)
@@ -1754,6 +1835,172 @@ def descargar_todo_zip(id_ficha):
     except Exception as e:
         flash(f'Error generando ZIP completo: {str(e)}', 'danger')
         return redirect(url_for('listar_matriz'))
+
+
+# ==========================================
+# PORTAL DE ENTIDADES (USUARIOS)
+# ==========================================
+@app.route('/login_usuario')
+def mostrar_login_usuario():
+    return render_template('login_usuario.html')
+
+@app.route('/validar_usuario', methods=['POST'])
+def validar_usuario():
+    if request.method == 'POST':
+        usuario_req = request.form.get('usuario')
+        password = request.form.get('password')
+        
+        user_obj = Usuario.query.filter_by(username=usuario_req).first()
+        
+        # Validar password y estado
+        if user_obj and check_password_hash(user_obj.password_hash, password):
+            if user_obj.estado != 'ACTIVO':
+                flash('Su cuenta se encuentra inactiva. Contacte al administrador.', 'danger')
+                return redirect(url_for('mostrar_login_usuario'))
+                
+            session['usuario_id'] = user_obj.id
+            session['usuario'] = user_obj.username
+            return redirect(url_for('dashboard_usuario'))
+        else:
+            flash('Usuario o contrasena incorrectos.', 'danger')
+            return redirect(url_for('mostrar_login_usuario'))
+
+
+@app.route('/portal/entidades')
+def portal_entidades():
+    if 'usuario_id' not in session:
+        flash('Por favor inicie sesión primero.', 'warning')
+        return redirect(url_for('mostrar_login_usuario'))
+        
+    user_obj = Usuario.query.get(session['usuario_id'])
+    if not user_obj:
+        return redirect(url_for('logout_usuario'))
+        
+    return render_template('usuario_entidades.html', entidades=user_obj.entidades)
+
+
+from functools import wraps
+
+def login_usuario_requerido(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'usuario_id' not in session:
+            flash('Por favor inicie sesión primero.', 'warning')
+            return redirect(url_for('mostrar_login_usuario'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+@app.route('/portal/matriz/<int:id_entidad>')
+@login_usuario_requerido
+def portal_matriz(id_entidad):
+    user_obj = Usuario.query.get(session['usuario_id'])
+    entidad = EntidadTecnica.query.get_or_404(id_entidad)
+    
+    if entidad not in user_obj.entidades:
+        flash('Acceso denegado: Esta entidad no le pertenece.', 'danger')
+        return redirect(url_for('portal_entidades'))
+        
+    fichas = FichaInscripcion.query.filter_by(id_entidad_tecnica=id_entidad).all()
+    return render_template('usuario_matriz.html', fichas=fichas, entidad=entidad)
+
+@app.route('/portal/descargar_informe/<int:id_ficha>')
+@login_usuario_requerido
+def portal_descargar_informe(id_ficha):
+    ficha = FichaInscripcion.query.get_or_404(id_ficha)
+    user_obj = Usuario.query.get(session['usuario_id'])
+    
+    if ficha.entidad_tecnica not in user_obj.entidades:
+        flash('Acceso denegado a este documento.', 'danger')
+        return redirect(url_for('portal_entidades'))
+        
+    from docxtpl import DocxTemplate
+    import io
+    contexto = get_contexto_documentos(id_ficha)
+    plantilla = "INFORME_TECNICO_MASTER.docx"
+    doc_inf = DocxTemplate(plantilla)
+    inject_logo(doc_inf, contexto)
+    doc_inf.render(contexto)
+    doc_io = io.BytesIO()
+    doc_inf.save(doc_io)
+    doc_io.seek(0)
+    return send_file(doc_io, as_attachment=True, download_name=f"INFORME_TECNICO_{id_ficha}.docx")
+
+@app.route('/portal/descargar_constatacion/<int:id_ficha>')
+@login_usuario_requerido
+def portal_descargar_constatacion(id_ficha):
+    ficha = FichaInscripcion.query.get_or_404(id_ficha)
+    user_obj = Usuario.query.get(session['usuario_id'])
+    
+    if ficha.entidad_tecnica not in user_obj.entidades:
+        flash('Acceso denegado a este documento.', 'danger')
+        return redirect(url_for('portal_entidades'))
+        
+    import io
+    from fpdf import FPDF
+    contexto = get_contexto_documentos(id_ficha)
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    pdf.cell(200, 10, txt=f"FICHA DE CONSTATACION - {ficha.id_ficha}", ln=True, align='C')
+    for k, v in contexto.items():
+        if k != 'LOGO_ET':
+            pdf.cell(200, 10, txt=f"{k}: {v}", ln=True)
+            
+    pdf_bytes = pdf.output(dest='S').encode('latin1', 'ignore')
+    pdf_io = io.BytesIO(pdf_bytes)
+    return send_file(pdf_io, as_attachment=True, download_name=f"CONSTATACION_{id_ficha}.pdf", mimetype='application/pdf')
+
+@app.route('/portal/descargar_todo_zip/<int:id_ficha>')
+@login_usuario_requerido
+def portal_descargar_todo_zip(id_ficha):
+    ficha = FichaInscripcion.query.get_or_404(id_ficha)
+    user_obj = Usuario.query.get(session['usuario_id'])
+    
+    if ficha.entidad_tecnica not in user_obj.entidades:
+        flash('Acceso denegado a este documento.', 'danger')
+        return redirect(url_for('portal_entidades'))
+        
+    import zipfile
+    import io
+    from docxtpl import DocxTemplate
+    from fpdf import FPDF
+    
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
+        contexto = get_contexto_documentos(id_ficha)
+        # Informe
+        doc_inf = DocxTemplate("INFORME_TECNICO_MASTER.docx")
+        inject_logo(doc_inf, contexto)
+        doc_inf.render(contexto)
+        doc_io = io.BytesIO()
+        doc_inf.save(doc_io)
+        zip_file.writestr(f"INFORME_{id_ficha}.docx", doc_io.getvalue())
+        
+        # Constatacion (mocked basic structure as per previous standard)
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        pdf.cell(200, 10, txt=f"FICHA DE CONSTATACION - {ficha.id_ficha}", ln=True, align='C')
+        pdf_bytes = pdf.output(dest='S').encode('latin1', 'ignore')
+        zip_file.writestr(f"CONSTATACION_{id_ficha}.pdf", pdf_bytes)
+        
+    zip_buffer.seek(0)
+    return send_file(zip_buffer, as_attachment=True, download_name=f"EXPEDIENTE_{id_ficha}.zip", mimetype='application/zip')
+
+
+@app.route('/dashboard_usuario')
+def dashboard_usuario():
+    if 'usuario_id' not in session:
+        flash('Por favor inicie sesion primero.', 'warning')
+        return redirect(url_for('mostrar_login_usuario'))
+    return render_template('dashboard_usuario.html')
+
+@app.route('/logout_usuario')
+def logout_usuario():
+    session.pop('usuario_id', None)
+    session.pop('usuario', None)
+    flash('Has cerrado sesion correctamente.', 'info')
+    return redirect(url_for('mostrar_login_usuario'))
 
 if __name__ == '__main__':
     app.run(debug=True)

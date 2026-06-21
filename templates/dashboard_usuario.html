@@ -1,0 +1,22 @@
+{% extends "base_usuario.html" %}
+
+{% block title %}Inicio{% endblock %}
+
+{% block content %}
+<style>
+    .empty-state {
+        height: 60vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+    }
+</style>
+
+<div class="empty-state">
+    <i class="bi bi-tools text-muted mb-3" style="font-size: 5rem; opacity: 0.5;"></i>
+    <h2 class="fw-bold text-secondary">Bienvenido al Portal</h2>
+    <p class="text-muted fs-5">Esta página se encuentra en construcción de momento.</p>
+</div>
+{% endblock %}

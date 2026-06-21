@@ -1,0 +1,117 @@
+{% extends "base_usuario.html" %}
+
+{% block title %}Matriz de {{ entidad.razon_social }}<script>
+    function toggleAllCheckboxes(source) {
+        checkboxes = document.querySelectorAll('.row-checkbox');
+        for(var i=0, n=checkboxes.length;i<n;i++) {
+            checkboxes[i].checked = source.checked;
+        }
+    }
+</script>
+{% endblock %}
+
+{% block content %}
+<style>
+    tr[aria-expanded="true"] .bi-chevron-down {
+        transform: rotate(180deg);
+    }
+    .accordion-toggle:hover {
+        background-color: rgba(13, 110, 253, 0.05) !important;
+    }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 class="text-secondary fw-bold mb-1"><i class="bi bi-folder2-open text-primary"></i> Expedientes</h3>
+        <p class="text-muted mb-0">Entidad: <strong>{{ entidad.razon_social }}</strong> (RUC: {{ entidad.ruc }})</p>
+    </div>
+    <a href="/portal/entidades" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Volver a mis Entidades</a>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" style="border-collapse: collapse;">
+                <thead class="table-light">
+                    <tr>
+                        <th scope="col" class="ps-4" style="width: 50px;">
+                            <input class="form-check-input" type="checkbox" id="checkAll" title="Seleccionar todos" onclick="event.stopPropagation(); toggleAllCheckboxes(this)">
+                        </th>
+                        <th scope="col">Código</th>
+                        <th scope="col">Beneficiario Titular</th>
+                        <th scope="col">Predio y Ubicación</th>
+                        <th scope="col" class="text-end pe-4">Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ficha in fichas %}
+                    <tr aria-expanded="false" style="cursor: pointer;" class="accordion-toggle">
+                        <td class="ps-4" onclick="event.stopPropagation();">
+                            <input class="form-check-input row-checkbox" type="checkbox" value="{{ ficha.id_ficha }}">
+                        </td>
+                        <td data-bs-toggle="collapse" data-bs-target="#collapseRow{{ ficha.id_ficha }}"><span class="badge bg-secondary">ET-{{ "%04d" % ficha.id_ficha }}</span></td>
+                        <td data-bs-toggle="collapse" data-bs-target="#collapseRow{{ ficha.id_ficha }}">
+                            {% if ficha.jefe %}
+                            <span class="fw-bold">{{ ficha.jefe.ap_paterno }} {{ ficha.jefe.ap_materno }} {{ ficha.jefe.nombres }}</span><br>
+                            <small class="text-muted">DNI: {{ ficha.jefe.dni }}</small>
+                            {% else %}
+                            <span class="text-muted fst-italic">Sin titular</span>
+                            {% endif %}
+                        </td>
+                        <td data-bs-toggle="collapse" data-bs-target="#collapseRow{{ ficha.id_ficha }}">
+                            {% if ficha.predio %}
+                            <span class="text-dark">{{ ficha.predio.direccion or '-' }}</span><br>
+                            <small class="text-muted"><i class="bi bi-geo-alt"></i> {{ ficha.predio.distrito or '-' }} - {{ ficha.predio.provincia or '-' }}</small>
+                            {% else %}
+                            <span class="text-muted fst-italic">Sin predio</span>
+                            {% endif %}
+                        </td>
+                        <td data-bs-toggle="collapse" data-bs-target="#collapseRow{{ ficha.id_ficha }}" class="text-end pe-4">
+                            <i class="bi bi-chevron-down text-muted fs-5 transition-transform" style="transition: transform 0.3s ease;"></i>
+                        </td>
+                    </tr>
+                    <!-- Fila Oculta con los Botones -->
+                    <tr>
+                        <td colspan="5" class="p-0 border-0">
+                            <div class="collapse" id="collapseRow{{ ficha.id_ficha }}">
+                                <div class="p-4 bg-light bg-gradient border-bottom d-flex align-items-center justify-content-between">
+                                    <div class="text-muted small">
+                                        <i class="bi bi-info-circle me-1"></i> Selecciona un documento para iniciar la descarga.
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <a href="/portal/descargar_informe/{{ ficha.id_ficha }}" class="btn btn-primary shadow-sm" title="Descargar Informe Técnico (Word)">
+                                            <i class="bi bi-file-earmark-word me-1"></i> Informe Técnico
+                                        </a>
+                                        <a href="/portal/descargar_constatacion/{{ ficha.id_ficha }}" class="btn btn-danger shadow-sm" title="Descargar Constatación (PDF)">
+                                            <i class="bi bi-file-earmark-pdf me-1"></i> Formato de Constatación
+                                        </a>
+                                        <a href="/portal/descargar_todo_zip/{{ ficha.id_ficha }}" class="btn btn-success shadow-sm" title="Descargar Todo (ZIP)">
+                                            <i class="bi bi-file-zip me-1"></i> Todos (ZIP)
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-5">
+                            <i class="bi bi-inbox fs-4 d-block mb-2"></i>
+                            No hay expedientes (fichas) registrados para esta Entidad Técnica.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<script>
+    function toggleAllCheckboxes(source) {
+        checkboxes = document.querySelectorAll('.row-checkbox');
+        for(var i=0, n=checkboxes.length;i<n;i++) {
+            checkboxes[i].checked = source.checked;
+        }
+    }
+</script>
+{% endblock %}

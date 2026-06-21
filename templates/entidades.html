@@ -41,6 +41,9 @@
                         <span class="badge bg-secondary ms-1 fw-normal" style="opacity: 0.8;">DNI: {{ et.rep_dni }}</span>
                     </td>
                     <td class="text-end">
+                        <button class="btn btn-sm btn-outline-primary me-1" data-bs-toggle="modal" data-bs-target="#modalEditar-{{ et.id_entidad_tecnica }}">
+                            ✏️ Editar
+                        </button>
                         <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalEliminar-{{ et.id_entidad_tecnica }}">
                             🗑️ Eliminar
                         </button>
@@ -58,6 +61,75 @@
 </div>
 
 {% for et in entidades %}
+<!-- Modal Editar -->
+<div class="modal fade" id="modalEditar-{{ et.id_entidad_tecnica }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <form action="/entidades/editar/{{ et.id_entidad_tecnica }}" method="POST">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">Editar Entidad Tcnica</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-start text-dark">
+                    
+                    <h6 class="text-primary mb-3"><i class="bi bi-building"></i> Datos de la Entidad Tcnica</h6>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">RUC</label>
+                            <input type="text" class="form-control" name="ruc" value="{{ et.ruc }}" required pattern="[0-9]{11}" title="El RUC debe tener 11 dgitos">
+                        </div>
+                        <div class="col-md-8 mb-3">
+                            <label class="form-label">Razn Social</label>
+                            <input type="text" class="form-control" name="razon_social" value="{{ et.razon_social }}" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label">Direccin</label>
+                            <input type="text" class="form-control" name="direccion" value="{{ et.direccion or '' }}">
+                        </div>
+                    </div>
+                    <div class="row mt-2">
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label"><i class="bi bi-image"></i> URL del Logo (Opcional)</label>
+                            <input type="url" class="form-control url-logo-input" name="url_logo" value="{{ et.url_logo or '' }}" pattern=".*\.(png|jpg|jpeg|gif|webp)(\?.*)?$" title="Debe ser una URL terminada en .png, .jpg, .jpeg, .gif o .webp">
+                            <div class="mt-2">
+                                <img class="logo-preview img-thumbnail d-none" style="max-height: 80px;" alt="Vista previa del logo">
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+                    <h6 class="text-primary mb-3"><i class="bi bi-person-tie"></i> Representante Legal</h6>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">DNI</label>
+                            <input type="text" class="form-control" name="rep_dni" value="{{ et.rep_dni }}" required pattern="[0-9]{8,20}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Nombres</label>
+                            <input type="text" class="form-control" name="rep_nombres" value="{{ et.rep_nombres }}" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Ap. Paterno</label>
+                            <input type="text" class="form-control" name="rep_ap_paterno" value="{{ et.rep_apellido_paterno }}" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Ap. Materno</label>
+                            <input type="text" class="form-control" name="rep_ap_materno" value="{{ et.rep_apellido_materno or '' }}">
+                        </div>
+                    </div>
+
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Guardar Cambios</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Modal Eliminar -->
 <div class="modal fade" id="modalEliminar-{{ et.id_entidad_tecnica }}" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
@@ -108,6 +180,15 @@
                             <input type="text" class="form-control" name="direccion">
                         </div>
                     </div>
+                    <div class="row mt-2">
+                        <div class="col-md-12 mb-3">
+                            <label for="url_logo" class="form-label"><i class="bi bi-image"></i> URL del Logo (Opcional)</label>
+                            <input type="url" class="form-control url-logo-input" name="url_logo" pattern=".*\.(png|jpg|jpeg|gif|webp)(\?.*)?$" title="Debe ser una URL terminada en .png, .jpg, .jpeg, .gif o .webp" placeholder="https://ejemplo.com/logo.png">
+                            <div class="mt-2">
+                                <img class="logo-preview img-thumbnail d-none" style="max-height: 80px;" alt="Vista previa del logo">
+                            </div>
+                        </div>
+                    </div>
 
                     <hr class="my-4">
                     <h6 class="text-primary mb-3"><i class="bi bi-person-tie"></i> Representante Legal</h6>
@@ -142,5 +223,33 @@
         </form>
     </div>
 </div>
+
+
+<!-- SCRIPT PREVISUALIZACION LOGO -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const inputs = document.querySelectorAll('.url-logo-input');
+    inputs.forEach(input => {
+        const preview = input.parentElement.querySelector('.logo-preview');
+        
+        const updatePreview = () => {
+            const val = input.value.trim();
+            // Regex basico para verificar que es imagen
+            const isValid = /.*\.(png|jpg|jpeg|gif|webp)(\?.*)?$/i.test(val);
+            if (isValid) {
+                preview.src = val;
+                preview.classList.remove('d-none');
+            } else {
+                preview.src = '';
+                preview.classList.add('d-none');
+            }
+        };
+
+        input.addEventListener('input', updatePreview);
+        // Al cargar la pagina (util para la edicion que ya tiene datos)
+        updatePreview();
+    });
+});
+</script>
 
 {% endblock %}

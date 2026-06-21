@@ -11,6 +11,7 @@ class EntidadTecnica(db.Model):
     rep_nombres = db.Column(db.String(100), nullable=False)
     rep_apellido_paterno = db.Column(db.String(100), nullable=True)
     rep_apellido_materno = db.Column(db.String(100), nullable=True)
+    url_logo = db.Column(db.String(500), nullable=True)
     
     id_ingeniero_vigente = db.Column(db.Integer, db.ForeignKey('ingenieros.id_ingeniero'), nullable=True)
     

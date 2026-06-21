@@ -377,20 +377,20 @@
                         <h6 class="fw-bold mb-3 border-bottom border-secondary pb-2" style="color: #0d6efd;"><i class="bi bi-file-earmark-text"></i> Partida y Constatación</h6>
                         <div class="row g-2 mb-3">
                             <div class="col-md-6">
-                                <div class="p-2 bg-light rounded border text-dark">
-                                    <small class="text-muted d-block">Partida Registral</small>
-                                    <span class="fw-bold">{{ ficha.predio.partida_registral if ficha.predio and ficha.predio.partida_registral else 'No registrado' }}</span>
+                                <div class="p-2 bg-dark rounded border border-secondary text-white">
+                                    <small class="text-white-50 d-block">Partida Registral</small>
+                                    <span class="fw-bold text-break text-light">{{ ficha.predio.partida_registral if ficha.predio and ficha.predio.partida_registral else 'No registrado' }}</span>
                                 </div>
                             </div>
                             <div class="col-md-3">
-                                <div class="p-2 bg-light rounded border text-center text-dark">
-                                    <small class="text-muted d-block">Cuenta c/ Agua</small>
+                                <div class="p-2 bg-dark rounded border border-secondary text-center text-white">
+                                    <small class="text-white-50 d-block">Cuenta c/ Agua</small>
                                     <span class="fw-bold text-{{ 'success' if ficha.constatacion and ficha.constatacion.tiene_agua else 'danger' }}">{{ 'SÍ' if ficha.constatacion and ficha.constatacion.tiene_agua else 'NO' }}</span>
                                 </div>
                             </div>
                             <div class="col-md-3">
-                                <div class="p-2 bg-light rounded border text-center text-dark">
-                                    <small class="text-muted d-block">Saneamiento</small>
+                                <div class="p-2 bg-dark rounded border border-secondary text-center text-white">
+                                    <small class="text-white-50 d-block">Saneamiento</small>
                                     <span class="fw-bold text-{{ 'success' if ficha.constatacion and ficha.constatacion.tiene_saneamiento else 'danger' }}">{{ 'SÍ' if ficha.constatacion and ficha.constatacion.tiene_saneamiento else 'NO' }}</span>
                                 </div>
                             </div>
@@ -400,9 +400,9 @@
                     <!-- SECCIÓN: INFORME TÉCNICO -->
                     <div class="col-12">
                         <h6 class="fw-bold mb-3 border-bottom border-secondary pb-2" style="color: #198754;"><i class="bi bi-rulers"></i> Informe Técnico (Linderos y Medidas)</h6>
-                        <div class="table-responsive mb-2 bg-light rounded text-dark">
+                        <div class="table-responsive mb-2 bg-dark rounded border border-secondary text-white">
                             <table class="table table-sm table-bordered text-center align-middle mb-0" style="font-size:0.85rem;">
-                                <thead class="table-light">
+                                <thead class="table-dark">
                                     <tr>
                                         <th class="text-start">LINDEROS</th>
                                         <th>MEDIDAS (m)</th>
@@ -435,15 +435,15 @@
                         </div>
                         <div class="row g-2 mb-4">
                             <div class="col-md-4">
-                                <div class="p-2 bg-light rounded border h-100 text-dark">
-                                    <small class="text-muted d-block">Área de Terreno</small>
+                                <div class="p-2 bg-dark rounded border border-secondary h-100 text-white">
+                                    <small class="text-white-50 d-block">Área de Terreno</small>
                                     <span class="fw-bold">{{ ficha.informe.area_terreno if ficha.informe and ficha.informe.area_terreno else '-' }} m2</span>
                                 </div>
                             </div>
                             <div class="col-md-8">
-                                <div class="p-2 bg-light rounded border h-100 text-dark">
-                                    <small class="text-muted d-block">Descripción</small>
-                                    <span class="fw-bold">{{ ficha.informe.descripcion if ficha.informe and ficha.informe.descripcion else '-' }}</span>
+                                <div class="p-2 bg-dark rounded border border-secondary h-100 text-white">
+                                    <small class="text-white-50 d-block">Descripción</small>
+                                    <span class="fw-bold text-break">{{ ficha.informe.descripcion if ficha.informe and ficha.informe.descripcion else '-' }}</span>
                                 </div>
                             </div>
                         </div>
