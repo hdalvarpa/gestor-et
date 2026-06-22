@@ -78,16 +78,19 @@
                                     <div class="text-muted small">
                                         <i class="bi bi-info-circle me-1"></i> Selecciona un documento para iniciar la descarga.
                                     </div>
-                                    <div class="d-flex gap-2">
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <a href="/portal/generar/{{ ficha.id_ficha }}" class="btn btn-danger shadow-sm text-white" title="Descargar Ficha de Inscripción (PDF)">
+                                            <i class="bi bi-file-earmark-pdf me-1"></i> Ficha de Inscripción
+                                        </a>
                                         <a href="/portal/descargar_informe/{{ ficha.id_ficha }}" class="btn btn-primary shadow-sm" title="Descargar Informe Técnico (Word)">
                                             <i class="bi bi-file-earmark-word me-1"></i> Informe Técnico
                                         </a>
-                                        <a href="/portal/descargar_constatacion/{{ ficha.id_ficha }}" class="btn btn-danger shadow-sm" title="Descargar Constatación (PDF)">
-                                            <i class="bi bi-file-earmark-pdf me-1"></i> Formato de Constatación
+                                        <button type="button" class="btn btn-info text-white shadow-sm" title="Descargar Constatación (Word)" onclick="abrirModalActas({{ ficha.id_ficha }}, 'constatacion')">
+                                            <i class="bi bi-file-earmark-word me-1"></i> Formato de Constatación
                                         </a>
-                                        <a href="/portal/descargar_todo_zip/{{ ficha.id_ficha }}" class="btn btn-success shadow-sm" title="Descargar Todo (ZIP)">
+                                        <button type="button" class="btn btn-success shadow-sm" title="Descargar Todo (ZIP)" onclick="abrirModalActas({{ ficha.id_ficha }}, 'zip')">
                                             <i class="bi bi-file-zip me-1"></i> Todos (ZIP)
-                                        </a>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -114,4 +117,170 @@
         }
     }
 </script>
+
+<!-- Modal de Fecha -->
+<div class="modal fade" id="modalActasDescarga" tabindex="-1" aria-labelledby="modalActasLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow-lg border-0 rounded-4">
+      <div class="modal-header bg-info text-white">
+        <h5 class="modal-title fw-bold" id="modalActasLabel"><i class="fas fa-calendar-alt me-2"></i>Fecha del Documento</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+            <div class="modal-body p-4">
+        
+        <div id="opcionesZipContainer" class="mb-4" style="display: none;">
+            <p class="form-label fw-bold text-secondary mb-2">Seleccione los documentos a descargar:</p>
+            <div class="form-check mb-2 border-bottom pb-2">
+                <input class="form-check-input" type="checkbox" id="checkMarcarTodo" checked>
+                <label class="form-check-label fw-bold text-dark" for="checkMarcarTodo">Marcar / Desmarcar Todos</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input doc-checkbox" type="checkbox" value="ficha" id="checkFicha" checked>
+                <label class="form-check-label text-danger" for="checkFicha"><i class="bi bi-file-earmark-pdf me-1"></i> Ficha de Inscripción (PDF)</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input doc-checkbox" type="checkbox" value="informe" id="checkInforme" checked>
+                <label class="form-check-label text-primary" for="checkInforme"><i class="bi bi-file-earmark-word me-1"></i> Informe Técnico (Word)</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input doc-checkbox" type="checkbox" value="constatacion" id="checkConstatacion" checked>
+                <label class="form-check-label text-info" for="checkConstatacion"><i class="bi bi-file-earmark-word me-1"></i> Formato de Constatación (Word)</label>
+            </div>
+            <div id="zipErrorMsg" class="text-danger small mt-2" style="display: none;">Debe seleccionar al menos dos documentos.</div>
+        </div>
+
+        <div class="mb-3" id="fechaContainer">
+          <label for="inputFechaDescarga" class="form-label fw-bold text-secondary">Indique la fecha de la Constatación/Informe:</label>
+          <input type="date" class="form-control form-control-lg border-info" id="inputFechaDescarga" required>
+          <div class="invalid-feedback">Debe seleccionar una fecha obligatoriamente.</div>
+        </div>
+      </div>
+      <div class="modal-footer bg-light">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-info text-white fw-bold" id="btnDescargarActasModal"><i class="fas fa-download me-2"></i>Descargar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+    let currentIdFicha = null;
+    let currentTipoDescarga = 'zip';
+    
+    function abrirModalActas(idFicha, tipo) {
+        currentIdFicha = idFicha;
+        currentTipoDescarga = tipo;
+        
+        // Setup Fecha
+        const inputFecha = document.getElementById('inputFechaDescarga');
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        inputFecha.value = `${yyyy}-${mm}-${dd}`;
+        inputFecha.classList.remove('is-invalid');
+        
+        // Setup Opciones (Mostrar/Ocultar y Reset)
+        const zipContainer = document.getElementById('opcionesZipContainer');
+        const fechaContainer = document.getElementById('fechaContainer');
+        document.getElementById('zipErrorMsg').style.display = 'none';
+        
+        if(tipo === 'zip') {
+            zipContainer.style.display = 'block';
+            document.getElementById('checkFicha').checked = true;
+            document.getElementById('checkInforme').checked = true;
+            document.getElementById('checkConstatacion').checked = true;
+            document.getElementById('checkMarcarTodo').checked = true;
+            fechaContainer.style.display = 'block'; // Porque Constatacion esta checkeado por defecto
+        } else {
+            // Si es un documento individual (por ej Constatacion directa), no mostramos los checkboxes
+            zipContainer.style.display = 'none';
+            fechaContainer.style.display = 'block';
+        }
+        
+        var myModal = new bootstrap.Modal(document.getElementById('modalActasDescarga') || document.getElementById('fechaModal'));
+        myModal.show();
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Lógica de los Checkboxes
+        const checkMarcarTodo = document.getElementById('checkMarcarTodo');
+        if(checkMarcarTodo) {
+            const docChecks = document.querySelectorAll('.doc-checkbox');
+            const checkConstatacion = document.getElementById('checkConstatacion');
+            const fechaContainer = document.getElementById('fechaContainer');
+
+            // Toggle Marcar Todo
+            checkMarcarTodo.addEventListener('change', function() {
+                docChecks.forEach(chk => chk.checked = this.checked);
+                fechaContainer.style.display = checkConstatacion.checked ? 'block' : 'none';
+            });
+
+            // Toggle individuales
+            docChecks.forEach(chk => {
+                chk.addEventListener('change', function() {
+                    const allChecked = Array.from(docChecks).every(c => c.checked);
+                    const someChecked = Array.from(docChecks).some(c => c.checked);
+                    checkMarcarTodo.checked = allChecked;
+                    checkMarcarTodo.indeterminate = someChecked && !allChecked;
+                    
+                    // Lógica de Fecha Dinamica
+                    if(this.id === 'checkConstatacion') {
+                        fechaContainer.style.display = this.checked ? 'block' : 'none';
+                    }
+                });
+            });
+        }
+
+        // Lógica del Boton Descargar
+        const btnDescargar = document.getElementById('btnDescargarActasModal');
+        if(btnDescargar) {
+            btnDescargar.addEventListener('click', function() {
+                let docsParam = '';
+                
+                // Si es ZIP, validamos checks y construimos URL docs
+                if(currentTipoDescarga === 'zip') {
+                    const docChecks = document.querySelectorAll('.doc-checkbox');
+                    const selectedDocs = Array.from(docChecks).filter(c => c.checked).map(c => c.value);
+                    
+                    if(selectedDocs.length < 2) {
+                        document.getElementById('zipErrorMsg').style.display = 'block';
+                        return;
+                    }
+                    document.getElementById('zipErrorMsg').style.display = 'none';
+                    docsParam = `&docs=${selectedDocs.join(',')}`;
+                }
+
+                // Si esta visible el contenedor de fecha (ej. consta checkeado o modo individual)
+                let fechaFormateada = '';
+                const fechaContainer = document.getElementById('fechaContainer');
+                if(fechaContainer.style.display !== 'none') {
+                    const inputFecha = document.getElementById('inputFechaDescarga');
+                    if(!inputFecha.value) {
+                        inputFecha.classList.add('is-invalid');
+                        return;
+                    }
+                    inputFecha.classList.remove('is-invalid');
+                    const parts = inputFecha.value.split('-');
+                    fechaFormateada = `${parts[2]}/${parts[1]}/${parts[0]}`;
+                }
+
+                // Construimos la URL
+                // Nota: Verificamos si estamos en /portal/ o no por la URL actual o asumimos el prefijo segun el archivo
+                let basePath = window.location.pathname.includes('/portal/') ? '/portal' : '';
+                
+                let url = currentTipoDescarga === 'constatacion' 
+                    ? `${basePath}/descargar_constatacion/${currentIdFicha}?fecha=${encodeURIComponent(fechaFormateada)}` 
+                    : `${basePath}/descargar_todo_zip/${currentIdFicha}?fecha=${encodeURIComponent(fechaFormateada)}${docsParam}`;
+                    
+                window.location.href = url;
+                
+                var myModalEl = document.getElementById('modalActasDescarga') || document.getElementById('fechaModal');
+                var modal = bootstrap.Modal.getInstance(myModalEl);
+                modal.hide();
+            });
+        }
+    });
+</script>
+
 {% endblock %}

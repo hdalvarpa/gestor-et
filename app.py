@@ -9,6 +9,7 @@ from datetime import datetime
 import io
 
 import requests
+# pyrefly: ignore [missing-import]
 from docxtpl import InlineImage
 from docx.shared import Mm
 
@@ -94,6 +95,17 @@ def login_requerido(f):
     def decorated_function(*args, **kwargs):
         if 'admin' not in session:
             return redirect(url_for('mostrar_login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+from functools import wraps
+
+def login_usuario_requerido(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'usuario_id' not in session:
+            flash('Por favor inicie sesión primero.', 'warning')
+            return redirect(url_for('mostrar_login_usuario'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -516,6 +528,15 @@ def generar_pdf_rapido():
             telefono=request.form.get('telefono_contacto') or ""
         )
 
+        
+        # --- FIX PARA NONE VALUES EN REPORTLAB ---
+        for obj in [mi_predio, mi_jefe, mi_conyuge, carga_1, carga_2, carga_3, familiar_adic_1, mi_contacto]:
+            if obj:
+                for key, val in vars(obj).items():
+                    if val is None:
+                        setattr(obj, key, "")
+        # -------------------------------------------
+        
         packet = crear_pdf_datos(mi_predio, mi_jefe, mi_conyuge, carga_1, carga_2, carga_3, familiar_adic_1, mi_contacto)
 
         new_pdf = PdfReader(packet)
@@ -532,6 +553,10 @@ def generar_pdf_rapido():
         output.write(output_stream)
 
         output_stream.seek(0)
+
+        if return_bytes:
+            return output_stream.getvalue()
+
         return send_file(
             output_stream,
             as_attachment=True,
@@ -545,6 +570,19 @@ def generar_pdf_rapido():
 @app.route('/generar/<int:id_ficha>', methods=['POST', 'GET'])
 @login_requerido
 def generar_pdf(id_ficha):
+    return _generar_pdf_interno(id_ficha)
+
+@app.route('/portal/generar/<int:id_ficha>', methods=['POST', 'GET'])
+@login_usuario_requerido
+def portal_generar_pdf(id_ficha):
+    ficha = FichaInscripcion.query.get_or_404(id_ficha)
+    user_obj = Usuario.query.get(session['usuario_id'])
+    if ficha.entidad_tecnica not in user_obj.entidades:
+        flash('Acceso denegado a este documento.', 'danger')
+        return redirect(url_for('portal_entidades'))
+    return _generar_pdf_interno(id_ficha)
+
+def _generar_pdf_interno(id_ficha, return_bytes=False):
     ficha = FichaInscripcion.query.get_or_404(id_ficha)
 
     if not os.path.exists(NOMBRE_PLANTILLA):
@@ -640,6 +678,15 @@ def generar_pdf(id_ficha):
 
 
         # --- 1. CREAMOS EL LIENZO (CANVAS) CON LOS DATOS ---
+        
+        # --- FIX PARA NONE VALUES EN REPORTLAB ---
+        for obj in [mi_predio, mi_jefe, mi_conyuge, carga_1, carga_2, carga_3, familiar_adic_1, mi_contacto]:
+            if obj:
+                for key, val in vars(obj).items():
+                    if val is None:
+                        setattr(obj, key, "")
+        # -------------------------------------------
+        
         packet = crear_pdf_datos(mi_predio, mi_jefe, mi_conyuge, carga_1, carga_2, carga_3, familiar_adic_1, mi_contacto)
 
         # 2. FUSIÓN (Merge)
@@ -662,6 +709,9 @@ def generar_pdf(id_ficha):
         output.write(output_stream)
         output_stream.seek(0)
 
+        if return_bytes:
+            return output_stream.getvalue()
+
         return send_file(
             output_stream,
             as_attachment=True,
@@ -670,6 +720,8 @@ def generar_pdf(id_ficha):
         )
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return f"<h1>Ocurrió un error:</h1><p>{str(e)}</p>"
 
 
@@ -682,6 +734,17 @@ def format_fecha(fecha_str):
         return fecha_obj.strftime('%d/%m/%Y')
     except:
         return fecha_str # Si falla, devuelve el texto original
+
+
+def draw_instruccion(c, x, y, texto):
+    inst = (texto or "").strip().upper()
+    if inst in ["SIN INSTRUCCION", "SIN INSTRUCCIÓN"]:
+        c.setFont("Helvetica", 6.9)
+        c.drawString(x, y + 4, "SIN")         
+        c.drawString(x, y - 4, "INSTRUCCIÓN") 
+        c.setFont("Helvetica", 10)
+    else:
+        c.drawString(x, y, inst)
 
 def crear_pdf_datos(mi_predio, mi_jefe, mi_conyuge, carga_1, carga_2, carga_3, familiar_adic_1, mi_contacto):
     """
@@ -1732,114 +1795,18 @@ def get_contexto_documentos(id_ficha, fecha_str=None):
 @app.route('/descargar_constatacion/<int:id_ficha>', methods=['GET'])
 @login_requerido
 def descargar_constatacion(id_ficha):
-    try:
-        from docxtpl import DocxTemplate
-        import io
-        
-        fecha_str = request.args.get('fecha', '')
-        contexto = get_contexto_documentos(id_ficha, fecha_str)
-        
-        doc_const = DocxTemplate('FORMATO DE CONSTATACIÓN.docx')
-        doc_const.render(contexto)
-        
-        doc_io = io.BytesIO()
-        doc_const.save(doc_io)
-        doc_io.seek(0)
-        
-        return send_file(
-            doc_io,
-            as_attachment=True,
-            download_name=f"FORMATO_CONSTATACION_{contexto['DNIBENEFICIARIO']}.docx",
-            mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        )
-    except Exception as e:
-        flash(f'Error generando Constatacion: {str(e)}', 'danger')
-        return redirect(url_for('listar_matriz'))
+    return _descargar_constatacion_interno(id_ficha)
 
 @app.route('/descargar_informe/<int:id_ficha>', methods=['GET'])
 @login_requerido
 def descargar_informe(id_ficha):
-    try:
-        from docxtpl import DocxTemplate
-        import io
-        
-        contexto = get_contexto_documentos(id_ficha)
-        plantilla = "INFORME_TECNICO_MASTER.docx"
-        doc_inf = DocxTemplate(plantilla)
-        inject_logo(doc_inf, contexto)
-        doc_inf.render(contexto)
-        
-        doc_io = io.BytesIO()
-        doc_inf.save(doc_io)
-        doc_io.seek(0)
-        
-        return send_file(
-            doc_io,
-            as_attachment=True,
-            download_name=f"INFORME_TECNICO_{contexto['DNIBENEFICIARIO']}.docx",
-            mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        )
-    except Exception as e:
-        flash(f'Error generando Informe Tcnico: {str(e)}', 'danger')
-        return redirect(url_for('listar_matriz'))
+    return _descargar_informe_interno(id_ficha)
 
 @app.route('/descargar_todo_zip/<int:id_ficha>', methods=['GET'])
 @login_requerido
 def descargar_todo_zip(id_ficha):
-    try:
-        from docxtpl import DocxTemplate
-        import zipfile
-        import io
-        
-        from datetime import datetime
-        
-        fecha_str = request.args.get('fecha', '')
-        contexto = get_contexto_documentos(id_ficha, fecha_str)
-        
-        memory_zip = io.BytesIO()
-        with zipfile.ZipFile(memory_zip, 'w', zipfile.ZIP_DEFLATED) as zf:
-            
-            # 1. Constatacion
-            doc_const = DocxTemplate('FORMATO DE CONSTATACIÓN.docx')
-            doc_const.render(contexto)
-            doc_io_const = io.BytesIO()
-            doc_const.save(doc_io_const)
-            zf.writestr(f"1_FORMATO_CONSTATACION_{contexto['DNIBENEFICIARIO']}.docx", doc_io_const.getvalue())
-            
-            # 2. Informe Tecnico
-            plantilla = "INFORME_TECNICO_MASTER.docx"
-            doc_inf = DocxTemplate(plantilla)
-            inject_logo(doc_inf, contexto)
-            doc_inf.render(contexto)
-            doc_io_inf = io.BytesIO()
-            doc_inf.save(doc_io_inf)
-            zf.writestr(f"2_INFORME_TECNICO_{contexto['DNIBENEFICIARIO']}.docx", doc_io_inf.getvalue())
-            
-            # 3. Ficha de Inscripcion (PDF)
-            # Invocamos la funcion original de app.py para obtener el PDF generado
-            try:
-                resp_pdf = generar_pdf(id_ficha)
-                pdf_bytes = resp_pdf.get_data()
-                zf.writestr(f"0_FICHA_INSCRIPCION_{contexto['DNIBENEFICIARIO']}.pdf", pdf_bytes)
-            except Exception as pdf_ex:
-                print("Error incrustando el PDF al ZIP:", pdf_ex)
+    return _descargar_todo_zip_interno(id_ficha)
 
-            
-        memory_zip.seek(0)
-        return send_file(
-            memory_zip,
-            mimetype="application/zip",
-            as_attachment=True,
-            download_name=f"EXPEDIENTE_COMPLETO_{contexto['DNIBENEFICIARIO']}.zip"
-        )
-    except Exception as e:
-        flash(f'Error generando ZIP completo: {str(e)}', 'danger')
-        return redirect(url_for('listar_matriz'))
-
-
-# ==========================================
-# PORTAL DE ENTIDADES (USUARIOS)
-# ==========================================
 @app.route('/login_usuario')
 def mostrar_login_usuario():
     return render_template('login_usuario.html')
@@ -1879,16 +1846,8 @@ def portal_entidades():
     return render_template('usuario_entidades.html', entidades=user_obj.entidades)
 
 
-from functools import wraps
 
-def login_usuario_requerido(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'usuario_id' not in session:
-            flash('Por favor inicie sesión primero.', 'warning')
-            return redirect(url_for('mostrar_login_usuario'))
-        return f(*args, **kwargs)
-    return decorated_function
+
 
 @app.route('/portal/matriz/<int:id_entidad>')
 @login_usuario_requerido
@@ -1908,85 +1867,30 @@ def portal_matriz(id_entidad):
 def portal_descargar_informe(id_ficha):
     ficha = FichaInscripcion.query.get_or_404(id_ficha)
     user_obj = Usuario.query.get(session['usuario_id'])
-    
     if ficha.entidad_tecnica not in user_obj.entidades:
         flash('Acceso denegado a este documento.', 'danger')
         return redirect(url_for('portal_entidades'))
-        
-    from docxtpl import DocxTemplate
-    import io
-    contexto = get_contexto_documentos(id_ficha)
-    plantilla = "INFORME_TECNICO_MASTER.docx"
-    doc_inf = DocxTemplate(plantilla)
-    inject_logo(doc_inf, contexto)
-    doc_inf.render(contexto)
-    doc_io = io.BytesIO()
-    doc_inf.save(doc_io)
-    doc_io.seek(0)
-    return send_file(doc_io, as_attachment=True, download_name=f"INFORME_TECNICO_{id_ficha}.docx")
+    return _descargar_informe_interno(id_ficha)
 
 @app.route('/portal/descargar_constatacion/<int:id_ficha>')
 @login_usuario_requerido
 def portal_descargar_constatacion(id_ficha):
     ficha = FichaInscripcion.query.get_or_404(id_ficha)
     user_obj = Usuario.query.get(session['usuario_id'])
-    
     if ficha.entidad_tecnica not in user_obj.entidades:
         flash('Acceso denegado a este documento.', 'danger')
         return redirect(url_for('portal_entidades'))
-        
-    import io
-    from fpdf import FPDF
-    contexto = get_contexto_documentos(id_ficha)
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
-    pdf.cell(200, 10, txt=f"FICHA DE CONSTATACION - {ficha.id_ficha}", ln=True, align='C')
-    for k, v in contexto.items():
-        if k != 'LOGO_ET':
-            pdf.cell(200, 10, txt=f"{k}: {v}", ln=True)
-            
-    pdf_bytes = pdf.output(dest='S').encode('latin1', 'ignore')
-    pdf_io = io.BytesIO(pdf_bytes)
-    return send_file(pdf_io, as_attachment=True, download_name=f"CONSTATACION_{id_ficha}.pdf", mimetype='application/pdf')
+    return _descargar_constatacion_interno(id_ficha)
 
 @app.route('/portal/descargar_todo_zip/<int:id_ficha>')
 @login_usuario_requerido
 def portal_descargar_todo_zip(id_ficha):
     ficha = FichaInscripcion.query.get_or_404(id_ficha)
     user_obj = Usuario.query.get(session['usuario_id'])
-    
     if ficha.entidad_tecnica not in user_obj.entidades:
         flash('Acceso denegado a este documento.', 'danger')
         return redirect(url_for('portal_entidades'))
-        
-    import zipfile
-    import io
-    from docxtpl import DocxTemplate
-    from fpdf import FPDF
-    
-    zip_buffer = io.BytesIO()
-    with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
-        contexto = get_contexto_documentos(id_ficha)
-        # Informe
-        doc_inf = DocxTemplate("INFORME_TECNICO_MASTER.docx")
-        inject_logo(doc_inf, contexto)
-        doc_inf.render(contexto)
-        doc_io = io.BytesIO()
-        doc_inf.save(doc_io)
-        zip_file.writestr(f"INFORME_{id_ficha}.docx", doc_io.getvalue())
-        
-        # Constatacion (mocked basic structure as per previous standard)
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", size=12)
-        pdf.cell(200, 10, txt=f"FICHA DE CONSTATACION - {ficha.id_ficha}", ln=True, align='C')
-        pdf_bytes = pdf.output(dest='S').encode('latin1', 'ignore')
-        zip_file.writestr(f"CONSTATACION_{id_ficha}.pdf", pdf_bytes)
-        
-    zip_buffer.seek(0)
-    return send_file(zip_buffer, as_attachment=True, download_name=f"EXPEDIENTE_{id_ficha}.zip", mimetype='application/zip')
-
+    return _descargar_todo_zip_interno(id_ficha)
 
 @app.route('/dashboard_usuario')
 def dashboard_usuario():
@@ -2001,6 +1905,97 @@ def logout_usuario():
     session.pop('usuario', None)
     flash('Has cerrado sesion correctamente.', 'info')
     return redirect(url_for('mostrar_login_usuario'))
+
+
+# ==========================================
+# FUNCIONES INTERNAS DE DESCARGA (COMPARTIDAS)
+# ==========================================
+def redirect_error_matriz():
+    if 'usuario_id' in session:
+        return redirect(url_for('portal_entidades'))
+    return redirect(url_for('listar_matriz'))
+
+def _descargar_constatacion_interno(id_ficha):
+    try:
+        fecha_str = request.args.get('fecha', '')
+        from docxtpl import DocxTemplate
+        import io
+        contexto = get_contexto_documentos(id_ficha, fecha_str)
+        plantilla = "FORMATO DE CONSTATACIÓN.docx"
+        doc_const = DocxTemplate(plantilla)
+        # La constatacion tambien puede usar el logo inyectado si lo deseas
+        inject_logo(doc_const, contexto)
+        doc_const.render(contexto)
+        
+        doc_io = io.BytesIO()
+        doc_const.save(doc_io)
+        doc_io.seek(0)
+        return send_file(doc_io, as_attachment=True, download_name=f"FORMATO_CONSTATACION_{id_ficha}.docx")
+    except Exception as e:
+        flash(f"Error al descargar Constatacion: {str(e)}", "danger")
+        return redirect_error_matriz()
+
+def _descargar_informe_interno(id_ficha):
+    try:
+        from docxtpl import DocxTemplate
+        import io
+        contexto = get_contexto_documentos(id_ficha)
+        plantilla = "INFORME_TECNICO_MASTER.docx"
+        doc_inf = DocxTemplate(plantilla)
+        inject_logo(doc_inf, contexto)
+        doc_inf.render(contexto)
+        doc_io = io.BytesIO()
+        doc_inf.save(doc_io)
+        doc_io.seek(0)
+        return send_file(doc_io, as_attachment=True, download_name=f"INFORME_TECNICO_{id_ficha}.docx")
+    except Exception as e:
+        flash(f"Error al descargar Informe: {str(e)}", "danger")
+        return redirect_error_matriz()
+
+def _descargar_todo_zip_interno(id_ficha):
+    try:
+        ficha = FichaInscripcion.query.get_or_404(id_ficha)
+        import zipfile
+        import io
+        from docxtpl import DocxTemplate
+        
+        fecha_str = request.args.get('fecha', '')
+        docs_param = request.args.get('docs', 'ficha,informe,constatacion')
+        docs_list = docs_param.split(',')
+        
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
+            contexto = get_contexto_documentos(id_ficha, fecha_str)
+            
+            # Informe
+            if 'informe' in docs_list:
+                doc_inf = DocxTemplate("INFORME_TECNICO_MASTER.docx")
+                inject_logo(doc_inf, contexto)
+                doc_inf.render(contexto)
+                doc_io = io.BytesIO()
+                doc_inf.save(doc_io)
+                zip_file.writestr(f"INFORME_{id_ficha}.docx", doc_io.getvalue())
+            
+            # Constatacion
+            if 'constatacion' in docs_list:
+                doc_const = DocxTemplate("FORMATO DE CONSTATACIÓN.docx")
+                inject_logo(doc_const, contexto)
+                doc_const.render(contexto)
+                doc_io_const = io.BytesIO()
+                doc_const.save(doc_io_const)
+                zip_file.writestr(f"CONSTATACION_{id_ficha}.docx", doc_io_const.getvalue())
+            
+            # Ficha Inscripcion PDF
+            if 'ficha' in docs_list:
+                pdf_bytes = _generar_pdf_interno(id_ficha, return_bytes=True)
+                if isinstance(pdf_bytes, bytes):
+                    zip_file.writestr(f"FICHA_INSCRIPCION_{id_ficha}.pdf", pdf_bytes)
+            
+        zip_buffer.seek(0)
+        return send_file(zip_buffer, as_attachment=True, download_name=f"EXPEDIENTE_{id_ficha}.zip", mimetype='application/zip')
+    except Exception as e:
+        flash(f"Error al empaquetar ZIP: {str(e)}", "danger")
+        return redirect_error_matriz()
 
 if __name__ == '__main__':
     app.run(debug=True)
