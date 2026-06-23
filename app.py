@@ -1,6 +1,8 @@
+
 # pyrefly: ignore [missing-import]
 from flask import Flask, render_template, request, send_file, redirect, url_for, session, flash
 from functools import wraps
+
 # pyrefly: ignore [missing-import]
 from pypdf import PdfReader, PdfWriter
 from reportlab.pdfgen import canvas
@@ -9,8 +11,10 @@ from datetime import datetime
 import io
 
 import requests
+
 # pyrefly: ignore [missing-import]
 from docxtpl import InlineImage
+# pyrefly: ignore [missing-import]
 from docx.shared import Mm
 
 def inject_logo(doc, contexto):
@@ -29,6 +33,7 @@ def inject_logo(doc, contexto):
 
 import os
 import zipfile
+
 # pyrefly: ignore [missing-import]
 from dotenv import load_dotenv
 import pandas as pd
@@ -43,10 +48,13 @@ from models.constatacion import Constatacion
 from models.informe_tecnico import InformeTecnico
 
 from models.beneficiario import Beneficiario
+
 # pyrefly: ignore [missing-import]
 from docxtpl import DocxTemplate
+
 # pyrefly: ignore [missing-import]
 import jinja2
+
 # pyrefly: ignore [missing-import]
 from werkzeug.security import generate_password_hash, check_password_hash
 from models.database import db
@@ -125,6 +133,7 @@ def inject_user():
 # ==========================================
 # GLOBAL ERROR HANDLERS (Evitar pantallas feas)
 # ==========================================
+# pyrefly: ignore [missing-import]
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
 @app.errorhandler(500)
@@ -134,6 +143,7 @@ def handle_database_error(error):
     db.session.rollback()
     flash('El servidor de base de datos cortó la conexión inesperadamente por inactividad. Por favor, vuelve a intentar la acción.', 'danger')
     # Intenta redirigir a la página donde estaba, si no, al dashboard
+    # pyrefly: ignore [missing-import]
     from flask import request
     return redirect(request.referrer or url_for('dashboard'))
 
@@ -312,14 +322,9 @@ def constatacion():
                             nombre_archivo_const = f"{carpeta_beneficiario}FORMATO_CONSTATACION_{b.dnibene}.docx"
                             zf.writestr(nombre_archivo_const, doc_io_const.getvalue())
                             
-                            # 2. Elegir y generar INFORME TÉCNICO (Senia o Coquitos)
+                            # 2. Elegir y generar INFORME TÉCNICO
                             et_lower = str(mi_empresa.et).lower()
-                            if 'coquitos' in et_lower:
-                                plantilla_informe = "INFORME_TECNICO_COQUITOS.docx"
-                            elif 'senia' in et_lower:
-                                plantilla_informe = "INFORME_TECNICO_SENIA.docx"
-                            else:
-                                plantilla_informe = None
+                            plantilla_informe = "INFORME_TECNICO_MASTER.docx"
                                 
                             print(f"ET procesado: '{et_lower}' | Plantilla seleccionada: {plantilla_informe}")
                                 
@@ -553,9 +558,6 @@ def generar_pdf_rapido():
         output.write(output_stream)
 
         output_stream.seek(0)
-
-        if return_bytes:
-            return output_stream.getvalue()
 
         return send_file(
             output_stream,
@@ -1683,6 +1685,8 @@ def generar_actas_web(id_ficha):
         # 3. Crear ZIP en memoria
         import zipfile
         import io
+
+        # pyrefly: ignore [missing-import]
         from docxtpl import DocxTemplate
         
         memory_zip = io.BytesIO()
@@ -1698,14 +1702,9 @@ def generar_actas_web(id_ficha):
             except Exception as e:
                 print("Error generando constatacin:", e)
                 
-            # B) Informe Tcnico
+            # B) Informe Técnico
             et_lower = str(contexto['ET']).lower()
-            if 'coquitos' in et_lower:
-                plantilla_informe = "INFORME_TECNICO_COQUITOS.docx"
-            elif 'senia' in et_lower:
-                plantilla_informe = "INFORME_TECNICO_SENIA.docx"
-            else:
-                plantilla_informe = "INFORME_TECNICO_SENIA.docx" # Por defecto Senia
+            plantilla_informe = "INFORME_TECNICO_MASTER.docx"
                 
             try:
                 doc_inf = DocxTemplate(plantilla_informe)
@@ -1918,6 +1917,8 @@ def redirect_error_matriz():
 def _descargar_constatacion_interno(id_ficha):
     try:
         fecha_str = request.args.get('fecha', '')
+
+        # pyrefly: ignore [missing-import]
         from docxtpl import DocxTemplate
         import io
         contexto = get_contexto_documentos(id_ficha, fecha_str)
@@ -1937,6 +1938,8 @@ def _descargar_constatacion_interno(id_ficha):
 
 def _descargar_informe_interno(id_ficha):
     try:
+
+        # pyrefly: ignore [missing-import]
         from docxtpl import DocxTemplate
         import io
         contexto = get_contexto_documentos(id_ficha)
@@ -1957,6 +1960,8 @@ def _descargar_todo_zip_interno(id_ficha):
         ficha = FichaInscripcion.query.get_or_404(id_ficha)
         import zipfile
         import io
+
+        # pyrefly: ignore [missing-import]
         from docxtpl import DocxTemplate
         
         fecha_str = request.args.get('fecha', '')

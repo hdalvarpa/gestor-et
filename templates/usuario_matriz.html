@@ -85,10 +85,10 @@
                                         <a href="/portal/descargar_informe/{{ ficha.id_ficha }}" class="btn btn-primary shadow-sm" title="Descargar Informe Técnico (Word)">
                                             <i class="bi bi-file-earmark-word me-1"></i> Informe Técnico
                                         </a>
-                                        <button type="button" class="btn btn-info text-white shadow-sm" title="Descargar Constatación (Word)" onclick="abrirModalActas({{ ficha.id_ficha }}, 'constatacion')">
+                                        <button type="button" class="btn btn-info text-white shadow-sm" title="Descargar Constatación (Word)" onclick="abrirModalActas('{{ ficha.id_ficha }}', 'constatacion')">
                                             <i class="bi bi-file-earmark-word me-1"></i> Formato de Constatación
                                         </a>
-                                        <button type="button" class="btn btn-success shadow-sm" title="Descargar Todo (ZIP)" onclick="abrirModalActas({{ ficha.id_ficha }}, 'zip')">
+                                        <button type="button" class="btn btn-success shadow-sm" title="Descargar Todo (ZIP)" onclick="abrirModalActas('{{ ficha.id_ficha }}', 'zip')">
                                             <i class="bi bi-file-zip me-1"></i> Todos (ZIP)
                                         </button>
                                     </div>
