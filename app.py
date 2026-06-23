@@ -95,7 +95,7 @@ db.init_app(app)
 
 
 # --- CONFIGURACIÓN ---
-NOMBRE_PLANTILLA = "FORMULARIO DE INSCRIPCION 2025 II.pdf"  # El nombre de tu archivo PDF real
+NOMBRE_PLANTILLA = "plantillas/FORMULARIO DE INSCRIPCION 2025 II.pdf"  # El nombre de tu archivo PDF real
 
 # --- DECORADOR DE PROTECCIÓN DE RUTAS ---
 def login_requerido(f):
@@ -313,7 +313,7 @@ def constatacion():
                             carpeta_beneficiario = f"{b.dnibene}_{nombre_limpio}/"
                             
                             # 1. Cargar y generar FORMATO DE CONSTATACIÓN
-                            doc_const = DocxTemplate("FORMATO DE CONSTATACIÓN.docx")
+                            doc_const = DocxTemplate("plantillas/FORMATO DE CONSTATACIÓN.docx")
                             doc_const.render(contexto)
                             
                             doc_io_const = io.BytesIO()
@@ -324,7 +324,7 @@ def constatacion():
                             
                             # 2. Elegir y generar INFORME TÉCNICO
                             et_lower = str(mi_empresa.et).lower()
-                            plantilla_informe = "INFORME_TECNICO_MASTER.docx"
+                            plantilla_informe = "plantillas/INFORME_TECNICO_MASTER.docx"
                                 
                             print(f"ET procesado: '{et_lower}' | Plantilla seleccionada: {plantilla_informe}")
                                 
@@ -1694,7 +1694,7 @@ def generar_actas_web(id_ficha):
             
             # A) Formato de Constatacin
             try:
-                doc_const = DocxTemplate('FORMATO DE CONSTATACIÓN.docx')
+                doc_const = DocxTemplate('plantillas/FORMATO DE CONSTATACIÓN.docx')
                 doc_const.render(contexto)
                 doc_io_const = io.BytesIO()
                 doc_const.save(doc_io_const)
@@ -1704,7 +1704,7 @@ def generar_actas_web(id_ficha):
                 
             # B) Informe Técnico
             et_lower = str(contexto['ET']).lower()
-            plantilla_informe = "INFORME_TECNICO_MASTER.docx"
+            plantilla_informe = "plantillas/INFORME_TECNICO_MASTER.docx"
                 
             try:
                 doc_inf = DocxTemplate(plantilla_informe)
@@ -1922,7 +1922,7 @@ def _descargar_constatacion_interno(id_ficha):
         from docxtpl import DocxTemplate
         import io
         contexto = get_contexto_documentos(id_ficha, fecha_str)
-        plantilla = "FORMATO DE CONSTATACIÓN.docx"
+        plantilla = "plantillas/FORMATO DE CONSTATACIÓN.docx"
         doc_const = DocxTemplate(plantilla)
         # La constatacion tambien puede usar el logo inyectado si lo deseas
         inject_logo(doc_const, contexto)
@@ -1943,7 +1943,7 @@ def _descargar_informe_interno(id_ficha):
         from docxtpl import DocxTemplate
         import io
         contexto = get_contexto_documentos(id_ficha)
-        plantilla = "INFORME_TECNICO_MASTER.docx"
+        plantilla = "plantillas/INFORME_TECNICO_MASTER.docx"
         doc_inf = DocxTemplate(plantilla)
         inject_logo(doc_inf, contexto)
         doc_inf.render(contexto)
@@ -1974,7 +1974,7 @@ def _descargar_todo_zip_interno(id_ficha):
             
             # Informe
             if 'informe' in docs_list:
-                doc_inf = DocxTemplate("INFORME_TECNICO_MASTER.docx")
+                doc_inf = DocxTemplate("plantillas/INFORME_TECNICO_MASTER.docx")
                 inject_logo(doc_inf, contexto)
                 doc_inf.render(contexto)
                 doc_io = io.BytesIO()
@@ -1983,7 +1983,7 @@ def _descargar_todo_zip_interno(id_ficha):
             
             # Constatacion
             if 'constatacion' in docs_list:
-                doc_const = DocxTemplate("FORMATO DE CONSTATACIÓN.docx")
+                doc_const = DocxTemplate("plantillas/FORMATO DE CONSTATACIÓN.docx")
                 inject_logo(doc_const, contexto)
                 doc_const.render(contexto)
                 doc_io_const = io.BytesIO()
