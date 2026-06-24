@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends base_template | default('base.html') %}
 
 {% block content %}
 
@@ -8,21 +8,27 @@
     </div>
     <div class="card-body">
 
-        <form action="{{ '/matriz/actualizar/' ~ ficha.id_ficha if ficha else '/matriz/crear' }}" method="POST"
+        <form action="{{ action_url|default('/matriz/actualizar/' ~ ficha.id_ficha if ficha else '/matriz/crear') }}" method="POST"
             onkeydown="return event.key != 'Enter';">
 
             <h5 class="mb-3 border-bottom pb-2 text-primary">0. Entidad Técnica a Cargo</h5>
             <div class="row mb-4">
                 <div class="col-12">
                     <label class="form-label fw-bold">Seleccione la Entidad Técnica</label>
-                    <select class="form-select" name="id_entidad_tecnica" required>
+                    <select class="form-select" {% if entidades|length == 1 %}disabled{% else %}name="id_entidad_tecnica" required{% endif %}>
+                        {% if entidades|length != 1 %}
                         <option value="">-- Seleccione una Entidad --</option>
+                        {% endif %}
                         {% for e in entidades %}
-                        <option value="{{ e.id_entidad_tecnica }}" {% if ficha and
-                            ficha.id_entidad_tecnica==e.id_entidad_tecnica %}selected{% endif %}>{{ e.razon_social }}
-                            (RUC: {{ e.ruc }})</option>
+                        <option value="{{ e.id_entidad_tecnica }}" 
+                            {% if (ficha and ficha.id_entidad_tecnica==e.id_entidad_tecnica) or entidades|length == 1 %}selected{% endif %}>
+                            {{ e.razon_social }} (RUC: {{ e.ruc }})
+                        </option>
                         {% endfor %}
                     </select>
+                    {% if entidades|length == 1 %}
+                    <input type="hidden" name="id_entidad_tecnica" value="{{ entidades[0].id_entidad_tecnica }}">
+                    {% endif %}
                 </div>
             </div>
 
@@ -623,31 +629,31 @@
 
 
             
-            <!-- SECCIN CONSTATACIONES -->
-            <h5 class="mb-3 border-bottom pb-2 text-primary mt-5">6. Actas y Constataciones</h5>
+            <!-- SECCIÓN CONSTATACIONES -->
+            <h5 class="mb-3 border-bottom pb-2 text-primary mt-5">7. Actas y Constataciones</h5>
             <div class="row">
 
                 <div class="col-md-4 mb-3 d-flex align-items-center">
                     <div class="form-check form-switch mt-4">
                         <input class="form-check-input" type="checkbox" name="tiene_agua" id="checkAgua"
                                {% if ficha and ficha.constatacion and ficha.constatacion.tiene_agua %}checked{% endif %}>
-                        <label class="form-check-label fw-bold" for="checkAgua">Cuenta con Agua?</label>
+                        <label class="form-check-label fw-bold" for="checkAgua">¿Cuenta con Agua?</label>
                     </div>
                 </div>
                 <div class="col-md-4 mb-3 d-flex align-items-center">
                     <div class="form-check form-switch mt-4">
                         <input class="form-check-input" type="checkbox" name="tiene_saneamiento" id="checkSaneamiento"
                                {% if ficha and ficha.constatacion and ficha.constatacion.tiene_saneamiento %}checked{% endif %}>
-                        <label class="form-check-label fw-bold" for="checkSaneamiento">Cuenta con Saneamiento?</label>
+                        <label class="form-check-label fw-bold" for="checkSaneamiento">¿Cuenta con Saneamiento?</label>
                     </div>
                 </div>
             </div>
 
-            <!-- SECCIN INFORME TCNICO -->
-            <h5 class="mb-3 border-bottom pb-2 text-primary mt-4">7. Informe Tcnico (Linderos y Medidas)</h5>
+            <!-- SECCIÓN INFORME TÉCNICO -->
+            <h5 class="mb-3 border-bottom pb-2 text-primary mt-4">8. Informe Técnico (Linderos y Medidas)</h5>
             <div class="table-responsive mt-3 mb-4">
-                <table class="table table-dark table-bordered text-center align-middle" style="background: rgba(255,255,255,0.05);">
-                    <thead class="text-primary">
+                <table class="table table-bordered text-center align-middle table-hover">
+                    <thead class="table-primary">
                         <tr>
                             <th style="width: 20%;">LINDEROS</th>
                             <th style="width: 30%;">MEDIDAS (m)</th>
@@ -656,24 +662,24 @@
                     </thead>
                     <tbody>
                         <tr>
-                            <td class="fw-bold text-light opacity-75">FRENTE</td>
-                            <td><input type="number" step="0.01" class="form-control form-control-sm text-center bg-dark text-white border-secondary" name="medida_frente" value="{{ ficha.informe.medida_frente if ficha and ficha.informe else '' }}"></td>
-                            <td><input type="text" class="form-control form-control-sm bg-dark text-white border-secondary" name="colindante_frente" oninput="this.value = this.value.toUpperCase()" value="{{ ficha.informe.colindante_frente if ficha and ficha.informe else '' }}"></td>
+                            <td class="fw-bold bg-light">FRENTE</td>
+                            <td><input type="number" step="0.01" class="form-control form-control-sm text-center" name="medida_frente" value="{{ ficha.informe.medida_frente if ficha and ficha.informe else '' }}"></td>
+                            <td><input type="text" class="form-control form-control-sm" name="colindante_frente" oninput="this.value = this.value.toUpperCase()" value="{{ ficha.informe.colindante_frente if ficha and ficha.informe else '' }}"></td>
                         </tr>
                         <tr>
-                            <td class="fw-bold text-light opacity-75">DERECHA</td>
-                            <td><input type="number" step="0.01" class="form-control form-control-sm text-center bg-dark text-white border-secondary" name="medida_derecha" value="{{ ficha.informe.medida_derecha if ficha and ficha.informe else '' }}"></td>
-                            <td><input type="text" class="form-control form-control-sm bg-dark text-white border-secondary" name="colindante_derecha" oninput="this.value = this.value.toUpperCase()" value="{{ ficha.informe.colindante_derecha if ficha and ficha.informe else '' }}"></td>
+                            <td class="fw-bold bg-light">DERECHA</td>
+                            <td><input type="number" step="0.01" class="form-control form-control-sm text-center" name="medida_derecha" value="{{ ficha.informe.medida_derecha if ficha and ficha.informe else '' }}"></td>
+                            <td><input type="text" class="form-control form-control-sm" name="colindante_derecha" oninput="this.value = this.value.toUpperCase()" value="{{ ficha.informe.colindante_derecha if ficha and ficha.informe else '' }}"></td>
                         </tr>
                         <tr>
-                            <td class="fw-bold text-light opacity-75">IZQUIERDA</td>
-                            <td><input type="number" step="0.01" class="form-control form-control-sm text-center bg-dark text-white border-secondary" name="medida_izquierda" value="{{ ficha.informe.medida_izquierda if ficha and ficha.informe else '' }}"></td>
-                            <td><input type="text" class="form-control form-control-sm bg-dark text-white border-secondary" name="colindante_izquierda" oninput="this.value = this.value.toUpperCase()" value="{{ ficha.informe.colindante_izquierda if ficha and ficha.informe else '' }}"></td>
+                            <td class="fw-bold bg-light">IZQUIERDA</td>
+                            <td><input type="number" step="0.01" class="form-control form-control-sm text-center" name="medida_izquierda" value="{{ ficha.informe.medida_izquierda if ficha and ficha.informe else '' }}"></td>
+                            <td><input type="text" class="form-control form-control-sm" name="colindante_izquierda" oninput="this.value = this.value.toUpperCase()" value="{{ ficha.informe.colindante_izquierda if ficha and ficha.informe else '' }}"></td>
                         </tr>
                         <tr>
-                            <td class="fw-bold text-light opacity-75">FONDO</td>
-                            <td><input type="number" step="0.01" class="form-control form-control-sm text-center bg-dark text-white border-secondary" name="medida_fondo" value="{{ ficha.informe.medida_fondo if ficha and ficha.informe else '' }}"></td>
-                            <td><input type="text" class="form-control form-control-sm bg-dark text-white border-secondary" name="colindante_fondo" oninput="this.value = this.value.toUpperCase()" value="{{ ficha.informe.colindante_fondo if ficha and ficha.informe else '' }}"></td>
+                            <td class="fw-bold bg-light">FONDO</td>
+                            <td><input type="number" step="0.01" class="form-control form-control-sm text-center" name="medida_fondo" value="{{ ficha.informe.medida_fondo if ficha and ficha.informe else '' }}"></td>
+                            <td><input type="text" class="form-control form-control-sm" name="colindante_fondo" oninput="this.value = this.value.toUpperCase()" value="{{ ficha.informe.colindante_fondo if ficha and ficha.informe else '' }}"></td>
                         </tr>
                     </tbody>
                 </table>
@@ -681,7 +687,7 @@
             
             <div class="row mt-2">
                 <div class="col-md-3 mb-3">
-                    <label class="form-label fw-bold">rea de Terreno (m2)</label>
+                    <label class="form-label fw-bold">Área de Terreno (m²)</label>
                     <input type="number" step="0.01" class="form-control" name="area_terreno"
                            value="{{ ficha.informe.area_terreno if ficha and ficha.informe else '' }}">
                 </div>
@@ -693,7 +699,7 @@
 
             <div class="mt-4 text-end">
                 <button type="submit" class="btn btn-lg btn-success">
-                    {{ "Actualizar Matrizón" if ficha else "Guardar Matriz" }}
+                    {{ "Actualizar Matriz" if ficha else "Guardar Matriz" }}
                 </button>
             </div>
         </form>

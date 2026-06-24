@@ -25,7 +25,10 @@
         <h3 class="text-secondary fw-bold mb-1"><i class="bi bi-folder2-open text-primary"></i> Expedientes</h3>
         <p class="text-muted mb-0">Entidad: <strong>{{ entidad.razon_social }}</strong> (RUC: {{ entidad.ruc }})</p>
     </div>
-    <a href="/portal/entidades" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Volver a mis Entidades</a>
+    <div class="d-flex gap-2">
+        <a href="/portal/matriz/nuevo/{{ entidad.id_entidad_tecnica }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Crear Matriz</a>
+        <a href="/portal/entidades" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Volver a mis Entidades</a>
+    </div>
 </div>
 
 <div class="card shadow-sm">
@@ -91,6 +94,12 @@
                                         <button type="button" class="btn btn-success shadow-sm" title="Descargar Todo (ZIP)" onclick="abrirModalActas('{{ ficha.id_ficha }}', 'zip')">
                                             <i class="bi bi-file-zip me-1"></i> Todos (ZIP)
                                         </button>
+                                        <a href="/portal/matriz/editar/{{ ficha.id_ficha }}" class="btn btn-warning shadow-sm" title="Editar Ficha">
+                                            <i class="bi bi-pencil-square me-1"></i> Editar
+                                        </a>
+                                        <button type="button" class="btn btn-outline-danger shadow-sm" title="Eliminar Ficha" data-bs-toggle="modal" data-bs-target="#modalEliminar-{{ ficha.id_ficha }}">
+                                            <i class="bi bi-trash me-1"></i> Eliminar
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -117,6 +126,29 @@
         }
     }
 </script>
+
+{% for ficha in fichas %}
+<!-- Modal Eliminar -->
+<div class="modal fade" id="modalEliminar-{{ ficha.id_ficha }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form action="/portal/matriz/eliminar/{{ ficha.id_ficha }}" method="POST">
+            <div class="modal-content text-dark">
+                <div class="modal-header">
+                    <h5 class="modal-title text-danger">⚠️ Confirmar Eliminación</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-start">
+                    <p>¿Estás seguro de que deseas eliminar la ficha de <strong>{{ ficha.jefe.nombres if ficha.jefe else 'esta persona' }} {{ ficha.jefe.ap_paterno if ficha.jefe else '' }}</strong> (DNI: {{ ficha.jefe.dni if ficha.jefe else 'N/A' }})?</p>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger">Sí, Eliminar</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endfor %}
 
 <!-- Modal de Fecha -->
 <div class="modal fade" id="modalActasDescarga" tabindex="-1" aria-labelledby="modalActasLabel" aria-hidden="true">

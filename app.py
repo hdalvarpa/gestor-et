@@ -1624,6 +1624,323 @@ def eliminar_matriz(id):
 
 
 # =======================================
+
+# RUTAS PARA EL PORTAL DE USUARIO - MATRIZ
+@app.route('/portal/matriz/nuevo/<int:id_entidad>')
+@login_usuario_requerido
+def portal_nueva_matriz_form(id_entidad):
+    entidad = EntidadTecnica.query.get_or_404(id_entidad)
+    user_obj = Usuario.query.get(session['usuario_id'])
+    if entidad not in user_obj.entidades:
+        flash('Acceso denegado a esta entidad.', 'danger')
+        return redirect(url_for('portal_entidades'))
+    return render_template('formulario_fichas.html', 
+                           entidades=[entidad], 
+                           base_template="base_usuario.html",
+                           action_url=url_for('portal_crear_matriz', id_entidad=id_entidad))
+
+@app.route('/portal/matriz/editar/<int:id_ficha>')
+@login_usuario_requerido
+def portal_editar_matriz_form(id_ficha):
+    ficha = FichaInscripcion.query.get_or_404(id_ficha)
+    user_obj = Usuario.query.get(session['usuario_id'])
+    if ficha.entidad_tecnica not in user_obj.entidades:
+        flash('Acceso denegado a esta matriz.', 'danger')
+        return redirect(url_for('portal_entidades'))
+    return render_template('formulario_fichas.html', 
+                           entidades=[ficha.entidad_tecnica], 
+                           ficha=ficha, 
+                           base_template="base_usuario.html",
+                           action_url=url_for('portal_actualizar_matriz', id_ficha=ficha.id_ficha))
+
+@app.route('/portal/matriz/eliminar/<int:id_ficha>', methods=['POST'])
+@login_usuario_requerido
+def portal_eliminar_matriz(id_ficha):
+    ficha = FichaInscripcion.query.get_or_404(id_ficha)
+    user_obj = Usuario.query.get(session['usuario_id'])
+    if ficha.entidad_tecnica not in user_obj.entidades:
+        flash('Acceso denegado.', 'danger')
+        return redirect(url_for('portal_entidades'))
+    
+    id_ent = ficha.id_entidad_tecnica
+    try:
+        db.session.delete(ficha)
+        db.session.commit()
+        flash('Ficha eliminada correctamente.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al eliminar la ficha: {str(e)}', 'danger')
+        
+    return redirect(url_for('portal_matriz', id_entidad=id_ent))
+
+@app.route('/portal/matriz/actualizar/<int:id_ficha>', methods=['POST'])
+@login_usuario_requerido
+def portal_actualizar_matriz(id_ficha):
+    ficha = FichaInscripcion.query.get_or_404(id_ficha)
+    user_obj = Usuario.query.get(session['usuario_id'])
+    if ficha.entidad_tecnica not in user_obj.entidades:
+        flash('Acceso denegado.', 'danger')
+        return redirect(url_for('portal_entidades'))
+
+    try:
+        ficha.id_entidad_tecnica = request.form.get('id_entidad_tecnica')
+        ficha.correo_contacto = request.form.get('correo_contacto', '')
+        ficha.telefono_contacto = request.form.get('telefono_contacto', '')
+
+        # Predio
+        if not ficha.predio:
+            ficha.predio = FichaPredio(id_ficha=ficha.id_ficha)
+            db.session.add(ficha.predio)
+        ficha.predio.partida_registral = request.form.get('partida_registral', '').upper()
+        ficha.predio.direccion = request.form.get('direccion', '').upper()
+        ficha.predio.departamento = request.form.get('departamento', '').upper()
+        ficha.predio.provincia = request.form.get('provincia', '').upper()
+        ficha.predio.distrito = request.form.get('distrito', '').upper()
+        ficha.predio.manzana = request.form.get('manzana', '').upper()
+        ficha.predio.lote = request.form.get('lote', '').upper()
+        ficha.predio.sublote = request.form.get('sublote', '').upper()
+        ficha.predio.centro_poblado = request.form.get('centro_poblado', '').upper()
+        ficha.predio.referencia = request.form.get('referencia', '').upper()
+
+        # Jefe
+        if not ficha.jefe:
+            ficha.jefe = FichaJefe(id_ficha=ficha.id_ficha)
+            db.session.add(ficha.jefe)
+        ficha.jefe.nombres = request.form.get('nombres_jefe', '').upper()
+        ficha.jefe.ap_paterno = request.form.get('ap_paterno_jefe', '').upper()
+        ficha.jefe.ap_materno = request.form.get('ap_materno_jefe', '').upper()
+        ficha.jefe.dni = request.form.get('dni_jefe', '').upper()
+        ficha.jefe.nacimiento = request.form.get('nacimiento_jefe', '')
+        ficha.jefe.estado_civil = request.form.get('estado_civil_jefe', '').upper()
+        ficha.jefe.grado_instruccion = request.form.get('grado_instruccion', '').upper()
+        ficha.jefe.ocupacion = request.form.get('ocupacion', '').upper()
+        ficha.jefe.discapacidad = request.form.get('discapacidad', '').upper()
+        ficha.jefe.sit_laboral = request.form.get('sit_laboral', '').upper()
+        ficha.jefe.condicion_eco = request.form.get('condicion_eco', '').upper()
+        ficha.jefe.ingreso_mensual = request.form.get('ingreso_mensual', '')
+
+        # Conyuge
+        if not ficha.conyuge:
+            ficha.conyuge = FichaConyuge(id_ficha=ficha.id_ficha)
+            db.session.add(ficha.conyuge)
+        ficha.conyuge.tiene_conyuge = True if request.form.get('checkTieneConyuge') == 'on' or request.form.get('nombres_conyuge') else False
+        ficha.conyuge.nombres = request.form.get('nombres_conyuge', '').upper()
+        ficha.conyuge.ap_paterno = request.form.get('ap_paterno_conyuge', '').upper()
+        ficha.conyuge.ap_materno = request.form.get('ap_materno_conyuge', '').upper()
+        ficha.conyuge.dni = request.form.get('dni_conyuge', '').upper()
+        ficha.conyuge.nacimiento = request.form.get('nacimiento_conyuge', '')
+        ficha.conyuge.estado_civil = request.form.get('estado_civil_conyuge', '').upper()
+        ficha.conyuge.grado_instruccion = request.form.get('grado_instruccion_conyuge', '').upper()
+        ficha.conyuge.ocupacion = request.form.get('ocupacion_conyuge', '').upper()
+        ficha.conyuge.discapacidad = request.form.get('discapacidad_conyuge', '').upper()
+        ficha.conyuge.sit_laboral = request.form.get('sit_laboral_conyuge', '').upper()
+        ficha.conyuge.condicion = request.form.get('condicion_conyuge', '').upper()
+        ficha.conyuge.ingreso_mensual = request.form.get('ingreso_mensual_conyuge', '')
+
+        # Cargas (borramos y re-creamos por simplicidad)
+        for c in ficha.cargas:
+            db.session.delete(c)
+        tiene_carga = True if request.form.get('checkTieneCarga') == 'on' or request.form.get('nombres_carga_1') else False
+        if tiene_carga:
+            for i in range(1, 4):
+                if request.form.get(f'nombres_carga_{i}'):
+                    nueva_carga = FichaCarga(
+                        id_ficha=ficha.id_ficha,
+                        nombres=request.form.get(f'nombres_carga_{i}', '').upper(),
+                        dni=request.form.get(f'dni_carga_{i}', '').upper(),
+                        nacimiento=request.form.get(f'nacimiento_carga_{i}', ''),
+                        vinculo=request.form.get(f'vinculo_carga_{i}', '').upper(),
+                        instruccion=request.form.get(f'instruccion_carga_{i}', '').upper(),
+                        discapacidad=request.form.get(f'discapacidad_carga_{i}', '').upper()
+                    )
+                    db.session.add(nueva_carga)
+
+        # Adicional
+        for a in ficha.adicionales:
+            db.session.delete(a)
+        if request.form.get('nombres_adic_1'):
+            nuevo_adic = FichaAdicional(
+                id_ficha=ficha.id_ficha,
+                nombres=request.form.get('nombres_adic_1', '').upper(),
+                ap_paterno=request.form.get('ap_paterno_adic_1', '').upper(),
+                ap_materno=request.form.get('ap_materno_adic_1', '').upper(),
+                dni=request.form.get('dni_adic_1', '').upper(),
+                vinculo=request.form.get('vinculo_adic_1', '').upper()
+            )
+            db.session.add(nuevo_adic)
+
+        
+        # CONST E INFORME
+        from datetime import datetime
+                
+        if not ficha.constatacion:
+            ficha.constatacion = Constatacion(id_ficha=ficha.id_ficha)
+            db.session.add(ficha.constatacion)
+        ficha.constatacion.tiene_agua = (request.form.get('tiene_agua') == 'on')
+        ficha.constatacion.tiene_saneamiento = (request.form.get('tiene_saneamiento') == 'on')
+        
+        def to_float(val):
+            try: return float(val) if val else None
+            except: return None
+            
+        if not ficha.informe:
+            ficha.informe = InformeTecnico(id_ficha=ficha.id_ficha)
+            db.session.add(ficha.informe)
+        ficha.informe.medida_frente = to_float(request.form.get('medida_frente'))
+        ficha.informe.colindante_frente = request.form.get('colindante_frente', '').upper()
+        ficha.informe.medida_derecha = to_float(request.form.get('medida_derecha'))
+        ficha.informe.colindante_derecha = request.form.get('colindante_derecha', '').upper()
+        ficha.informe.medida_izquierda = to_float(request.form.get('medida_izquierda'))
+        ficha.informe.colindante_izquierda = request.form.get('colindante_izquierda', '').upper()
+        ficha.informe.medida_fondo = to_float(request.form.get('medida_fondo'))
+        ficha.informe.colindante_fondo = request.form.get('colindante_fondo', '').upper()
+        ficha.informe.area_terreno = to_float(request.form.get('area_terreno'))
+        ficha.informe.descripcion = request.form.get('descripcion', '').upper()
+
+        db.session.commit()
+        flash('Ficha de Inscripción actualizada correctamente.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al actualizar la Ficha: {str(e)}', 'danger')
+    return redirect(url_for('portal_matriz', id_entidad=ficha.id_entidad_tecnica))
+
+@app.route('/portal/matriz/crear/<int:id_entidad>', methods=['POST'])
+@login_usuario_requerido
+def portal_crear_matriz(id_entidad):
+    entidad = EntidadTecnica.query.get_or_404(id_entidad)
+    user_obj = Usuario.query.get(session['usuario_id'])
+    if entidad not in user_obj.entidades:
+        flash('Acceso denegado.', 'danger')
+        return redirect(url_for('portal_entidades'))
+
+
+    try:
+        # 1. Crear la cabecera de la ficha
+        nueva_ficha = FichaInscripcion(
+            id_entidad_tecnica=request.form.get('id_entidad_tecnica'),
+            correo_contacto=request.form.get('correo_contacto', ''),
+            telefono_contacto=request.form.get('telefono_contacto', '')
+        )
+        db.session.add(nueva_ficha)
+        db.session.flush() # Para obtener el id_ficha
+
+        # 2. Crear Predio
+        nuevo_predio = FichaPredio(
+            id_ficha=nueva_ficha.id_ficha,
+            partida_registral=request.form.get('partida_registral', '').upper(),
+            direccion=request.form.get('direccion', '').upper(),
+            departamento=request.form.get('departamento', '').upper(),
+            provincia=request.form.get('provincia', '').upper(),
+            distrito=request.form.get('distrito', '').upper(),
+            manzana=request.form.get('manzana', '').upper(),
+            lote=request.form.get('lote', '').upper(),
+            sublote=request.form.get('sublote', '').upper(),
+            centro_poblado=request.form.get('centro_poblado', '').upper(),
+            referencia=request.form.get('referencia', '').upper()
+        )
+        db.session.add(nuevo_predio)
+
+        # 3. Crear Jefe
+        nuevo_jefe = FichaJefe(
+            id_ficha=nueva_ficha.id_ficha,
+            nombres=request.form.get('nombres_jefe', '').upper(),
+            ap_paterno=request.form.get('ap_paterno_jefe', '').upper(),
+            ap_materno=request.form.get('ap_materno_jefe', '').upper(),
+            dni=request.form.get('dni_jefe', '').upper(),
+            nacimiento=request.form.get('nacimiento_jefe', ''),
+            estado_civil=request.form.get('estado_civil_jefe', '').upper(),
+            grado_instruccion=request.form.get('grado_instruccion', '').upper(),
+            ocupacion=request.form.get('ocupacion', '').upper(),
+            discapacidad=request.form.get('discapacidad', '').upper(),
+            sit_laboral=request.form.get('sit_laboral', '').upper(),
+            condicion_eco=request.form.get('condicion_eco', '').upper(),
+            ingreso_mensual=request.form.get('ingreso_mensual', '')
+        )
+        db.session.add(nuevo_jefe)
+
+        # 4. Crear Conyuge
+        nuevo_conyuge = FichaConyuge(
+            id_ficha=nueva_ficha.id_ficha,
+            tiene_conyuge=True if request.form.get('checkTieneConyuge') == 'on' or request.form.get('nombres_conyuge') else False,
+            nombres=request.form.get('nombres_conyuge', '').upper(),
+            ap_paterno=request.form.get('ap_paterno_conyuge', '').upper(),
+            ap_materno=request.form.get('ap_materno_conyuge', '').upper(),
+            dni=request.form.get('dni_conyuge', '').upper(),
+            nacimiento=request.form.get('nacimiento_conyuge', ''),
+            estado_civil=request.form.get('estado_civil_conyuge', '').upper(),
+            grado_instruccion=request.form.get('grado_instruccion_conyuge', '').upper(),
+            ocupacion=request.form.get('ocupacion_conyuge', '').upper(),
+            discapacidad=request.form.get('discapacidad_conyuge', '').upper(),
+            sit_laboral=request.form.get('sit_laboral_conyuge', '').upper(),
+            condicion=request.form.get('condicion_conyuge', '').upper(),
+            ingreso_mensual=request.form.get('ingreso_mensual_conyuge', '')
+        )
+        db.session.add(nuevo_conyuge)
+
+        # 5. Crear Cargas
+        tiene_carga = True if request.form.get('checkTieneCarga') == 'on' or request.form.get('nombres_carga_1') else False
+        if tiene_carga:
+            for i in range(1, 4):
+                if request.form.get(f'nombres_carga_{i}'):
+                    nueva_carga = FichaCarga(
+                        id_ficha=nueva_ficha.id_ficha,
+                        nombres=request.form.get(f'nombres_carga_{i}', '').upper(),
+                        dni=request.form.get(f'dni_carga_{i}', '').upper(),
+                        nacimiento=request.form.get(f'nacimiento_carga_{i}', ''),
+                        vinculo=request.form.get(f'vinculo_carga_{i}', '').upper(),
+                        instruccion=request.form.get(f'instruccion_carga_{i}', '').upper(),
+                        discapacidad=request.form.get(f'discapacidad_carga_{i}', '').upper()
+                    )
+                    db.session.add(nueva_carga)
+
+        # 6. Crear Adicional
+        if request.form.get('nombres_adic_1'):
+            nuevo_adic = FichaAdicional(
+                id_ficha=nueva_ficha.id_ficha,
+                nombres=request.form.get('nombres_adic_1', '').upper(),
+                ap_paterno=request.form.get('ap_paterno_adic_1', '').upper(),
+                ap_materno=request.form.get('ap_materno_adic_1', '').upper(),
+                dni=request.form.get('dni_adic_1', '').upper(),
+                vinculo=request.form.get('vinculo_adic_1', '').upper()
+            )
+            db.session.add(nuevo_adic)
+
+        # 7. Crear Constatacion e Informe Tecnico
+        from datetime import datetime
+                
+        nueva_constatacion = Constatacion(
+            id_ficha=nueva_ficha.id_ficha,
+            tiene_agua=(request.form.get('tiene_agua') == 'on'),
+            tiene_saneamiento=(request.form.get('tiene_saneamiento') == 'on')
+        )
+        db.session.add(nueva_constatacion)
+        
+        def to_float(val):
+            try: return float(val) if val else None
+            except: return None
+            
+        nuevo_informe = InformeTecnico(
+            id_ficha=nueva_ficha.id_ficha,
+            medida_frente=to_float(request.form.get('medida_frente')),
+            colindante_frente=request.form.get('colindante_frente', '').upper(),
+            medida_derecha=to_float(request.form.get('medida_derecha')),
+            colindante_derecha=request.form.get('colindante_derecha', '').upper(),
+            medida_izquierda=to_float(request.form.get('medida_izquierda')),
+            colindante_izquierda=request.form.get('colindante_izquierda', '').upper(),
+            medida_fondo=to_float(request.form.get('medida_fondo')),
+            colindante_fondo=request.form.get('colindante_fondo', '').upper(),
+            area_terreno=to_float(request.form.get('area_terreno')),
+            descripcion=request.form.get('descripcion', '').upper()
+        )
+        db.session.add(nuevo_informe)
+        
+        db.session.commit()
+        flash('Ficha de Inscripción guardada correctamente en BD Normalizada.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al guardar la Ficha: {str(e)}', 'danger')
+        
+    return redirect(url_for('portal_matriz', id_entidad=id_entidad))
 # GENERADOR WEB DE ACTAS (SIN EXCEL)
 # ==========================================
 # RUTA VIEJA DE ACTAS DESHABILITADA
